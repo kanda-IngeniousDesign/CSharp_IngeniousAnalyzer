@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
+    <xsd:element name="root" msdata:IsDataSet="true">
+      <xsd:complexType>
+        <xsd:choice maxOccurs="unbounded">
+          <xsd:element name="data">
+            <xsd:complexType>
+              <xsd:sequence>
+                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="0" />
+              </xsd:sequence>
+              <xsd:attribute name="name" type="xsd:string" use="required" />
+            </xsd:complexType>
+          </xsd:element>
+        </xsd:choice>
+      </xsd:complexType>
+    </xsd:element>
+  </xsd:schema>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+
+  <data name="NULL001_Title"><value>Use 'is null' pattern matching to avoid unintended operator overload behavior.</value></data>
+  <data name="NULL001_Message"><value>Use type-safe 'is null' pattern instead of comparison operators (== / !=).</value></data>
+
+  <data name="STR001_Title"><value>Use lowercase 'string.Empty' to unify coding styles.</value></data>
+  <data name="STR001_Message"><value>Use lowercase 'string.Empty' instead of '{0}' for consistency.</value></data>
+
+  <data name="STR002_Title"><value>Replace string literals with 'nameof' to prevent breaking bugs during refactoring.</value></data>
+  <data name="STR002_Message"><value>Use type-safe 'nameof({0})' instead of the magic string literal '{0}'.</value></data>
+
+  <data name="LINQ001_Title"><value>Combine LINQ 'Where' and selection methods to optimize performance.</value></data>
+  <data name="LINQ001_Message"><value>Combine Where().{0}() chain into a single '{0}(condition)'.</value></data>
+
+  <data name="COLL001_Title"><value>Specify initial capacity for List to reduce memory reallocation overhead.</value></data>
+  <data name="COLL001_Message"><value>Specify initial capacity in List constructor as the loop count is predictable.</value></data>
+</root>

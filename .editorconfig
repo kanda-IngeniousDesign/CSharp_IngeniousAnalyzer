@@ -1,0 +1,15 @@
+[*.cs]
+# CSharp-CSharp-IngeniousAnalyzer Rules
+
+# --- Collection Rules (List capacity, initialization, etc.) ---
+dotnet_diagnostic.COL001.severity = warning
+
+# --- Linq Rules (Avoid unnecessary ToList, optimize performance) ---
+dotnet_diagnostic.LINQ001.severity = warning
+
+# --- Null Rules (Enforce Nullable reference types, explicit null checks) ---
+dotnet_diagnostic.NUL001.severity = warning
+
+# --- String Rules (Empty check optimization, interpolation usage) ---
+dotnet_diagnostic.STR001.severity = warning
+dotnet_diagnostic.STR002.severity = warning
