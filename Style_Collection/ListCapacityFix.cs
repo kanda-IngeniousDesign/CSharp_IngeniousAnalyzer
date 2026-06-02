@@ -32,7 +32,7 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Fix: 初期キャパシティを指定する",
+                title: "Fix : 初期キャパシティを指定する",
                 createChangedDocument: c => FixCapacityAsync(context.Document, objectCreation, c),
                 equivalenceKey: "AddCapacityArgument"),
             context.Diagnostics.First());
