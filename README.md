@@ -1,4 +1,4 @@
-# CSharp-CSharp-IngeniousAnalyzer
+# CSharp_IngeniousAnalyzer
 A static analyzer designed to dramatically improve the code quality of your C# projects. It automatically detects issues such as insecure null checks, inefficient LINQ queries, and magic numbers, helping you maintain a safe and clean codebase.
 <br>
 <br>
