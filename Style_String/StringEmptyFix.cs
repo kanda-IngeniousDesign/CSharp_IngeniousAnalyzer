@@ -12,7 +12,6 @@ namespace CSharp_IngeniousAnalyzer.Style_String;
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(StringEmptyFix)), Shared]
 public class StringEmptyFix : CodeFixProvider
 {
-    // 🛠️ 密結合にして二重管理を廃止
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [StringEmpty.DiagnosticId];
 
     public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
@@ -22,7 +21,7 @@ public class StringEmptyFix : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root is null) return;
 
-        // 💡 共通の拡張メソッドでノードを一撃取得！
+        // 共通の拡張メソッドでノードを一撃取得！
         var binaryExpr = root.FindNodeAtSpan<BinaryExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (binaryExpr is null) return;
 
@@ -51,7 +50,7 @@ public class StringEmptyFix : CodeFixProvider
             SyntaxFactory.PredefinedType(SyntaxFactory.Token(SyntaxKind.StringKeyword)),
             SyntaxFactory.IdentifierName("Empty"));
 
-        // 💡 泥臭かったTriviaの移植が、拡張メソッドで究極にシンプルに！
+        // 泥臭かったTriviaの移植が、拡張メソッドで究極にシンプルに！
         var nodeWithTrivia = stringEmptyExpression.WithTriviaFrom<MemberAccessExpressionSyntax>(oldExpression);
 
         var newBinaryExpr = isLeftTarget 

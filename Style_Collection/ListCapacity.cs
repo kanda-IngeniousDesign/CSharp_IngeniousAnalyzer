@@ -11,9 +11,9 @@ namespace CSharp_IngeniousAnalyzer.Style_Collection;
 public class ListCapacity : CommonAnalyzer
 {
     public const string DiagnosticId = "COLL001";
+    private const string Category = "Performance";
     private static readonly LocalizableString Title = CreateLocalStr(nameof(ResourceEnum.COLL001_Title));
     private static readonly LocalizableString MessageFormat = CreateLocalStr(nameof(ResourceEnum.COLL001_Message));
-    private const string Category = "Performance";
 
     protected override DiagnosticDescriptor Rule { get; } = new(
         DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);

@@ -15,14 +15,8 @@ public class IsNull : CommonAnalyzer
     private static readonly LocalizableString Title = CreateLocalStr(nameof(ResourceEnum.NULL001_Title));
     private static readonly LocalizableString MessageFormat = CreateLocalStr(nameof(ResourceEnum.NULL001_Message));
 
-    protected override DiagnosticDescriptor Rule => new DiagnosticDescriptor(
-        DiagnosticId,
-        Title,
-        MessageFormat,
-        Category,
-        DiagnosticSeverity.Warning,
-        isEnabledByDefault: true
-    );
+    protected override DiagnosticDescriptor Rule { get; } = new(
+        DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
     // == と != の式を監視対象にする
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.EqualsExpression, SyntaxKind.NotEqualsExpression];

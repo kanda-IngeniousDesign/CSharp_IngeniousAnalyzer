@@ -11,14 +11,14 @@ namespace CSharp_IngeniousAnalyzer.Style_String;
 public class StringEmpty : CommonAnalyzer
 {
     public const string DiagnosticId = "STR001";
+    private const string Category = "Style";
     private static readonly LocalizableString Title = CreateLocalStr(nameof(ResourceEnum.STR001_Title));
     private static readonly LocalizableString MessageFormat = CreateLocalStr(nameof(ResourceEnum.STR001_Message));
-    private const string Category = "Style";
 
     protected override DiagnosticDescriptor Rule { get; } = new(
         DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-    // 💡 監視ターゲットを宣言するだけ！
+    // 監視ターゲットを宣言するだけ！
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.EqualsExpression, SyntaxKind.NotEqualsExpression];
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)

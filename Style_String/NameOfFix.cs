@@ -22,7 +22,7 @@ public class NameofOptimizationFix : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root is null) return;
 
-        // 💡 共通の拡張メソッド「FindNodeAtSpan」で文字列ノードを一撃取得！
+        // 共通の拡張メソッド「FindNodeAtSpan」で文字列ノードを一撃取得！
         var stringLiteral = root.FindNodeAtSpan<LiteralExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (stringLiteral is null) return;
 
@@ -48,7 +48,7 @@ public class NameofOptimizationFix : CodeFixProvider
         
         var nameofExpression = SyntaxFactory.InvocationExpression(nameofIdentifier, argumentList);
 
-        // 🛡️ 【Triviaディフェンス】元の文字列の周りにあったコメントや改行を、新しいnameof式へ完全移植！
+        // 【Triviaディフェンス】元の文字列の周りにあったコメントや改行を、新しいnameof式へ完全移植！
         var nameofWithTrivia = nameofExpression.WithTriviaFrom<InvocationExpressionSyntax>(stringLiteral);
 
         // 構文木を安全に置換

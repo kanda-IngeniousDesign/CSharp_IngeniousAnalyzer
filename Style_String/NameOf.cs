@@ -11,14 +11,14 @@ namespace CSharp_IngeniousAnalyzer.Style_String;
 public class Nameof : CommonAnalyzer
 {
     public const string DiagnosticId = "STR002";
+    private const string Category = "Style";
     private static readonly LocalizableString Title = CreateLocalStr(nameof(ResourceEnum.STR002_Title));
     private static readonly LocalizableString MessageFormat = CreateLocalStr(nameof(ResourceEnum.STR002_Message));
-    private const string Category = "Style";
 
     protected override DiagnosticDescriptor Rule { get; } = new(
         DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-    // 💡 今回のターゲットは「文字列リテラル（StringLiteralExpression）」を片っ端からスキャン！
+    // 今回のターゲットは「文字列リテラル（StringLiteralExpression）」を片っ端からスキャン！
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.StringLiteralExpression];
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
@@ -45,7 +45,7 @@ public class Nameof : CommonAnalyzer
                 .Any(v => v.Identifier.ValueText == stringValue);
         }
 
-        // 🚨 【製品としての安全弁（パターン④対策）】
+        // 【製品としての安全弁（パターン④対策）】
         // スコープ内に一致する引数・変数が1つも無い場合は、ただの一般的な文字列なので完全スルー！
         if (!hasMatchingSymbol) return;
 

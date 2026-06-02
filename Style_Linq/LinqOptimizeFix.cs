@@ -21,7 +21,7 @@ public class LinqOptimizationFix : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root is null) return;
 
-        // 💡 自作の共通拡張メソッド「FindNodeAtSpan」でスッキリ逆引き
+        // 自作の共通拡張メソッド「FindNodeAtSpan」でスッキリ逆引き
         var invocation = root.FindNodeAtSpan<InvocationExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (invocation is null) return;
 
@@ -62,7 +62,7 @@ public class LinqOptimizationFix : CodeFixProvider
             .WithExpression(newMemberAccess)
             .WithArgumentList(whereArguments);
 
-        // 💡 構文木の置換結果を新しいルートとして返す
+        // 構文木の置換結果を新しいルートとして返す
         var newRoot = root.ReplaceNode(rightInvocation, newInvocation);
         return document.WithSyntaxRoot(newRoot);
     }

@@ -15,7 +15,6 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
     public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics => [Rule];
 
-    // ✨ ゆうじさんが設計された、タイポを防ぐための強型の定義
     protected enum ResourceEnum
     {
         NULL001_Title,
@@ -33,7 +32,6 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
         COLL001_Message,
     }
 
-    // ✨ Enumの文字列（.ToString()）を受け取り、リソースから安全に引き出す仕組み
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)
     {
         return new LocalizableResourceString(

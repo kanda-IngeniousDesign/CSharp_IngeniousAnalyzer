@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.3.0</Version>
+    <Version>1.5.0</Version>
     <PackageReleaseNotes>
       - パッケージ名称の統一
       - リソースファイルを参照できない不具合対策
@@ -15,7 +15,6 @@
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>true</IncludeBuildOutput>
-    <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
 
     <Authors>Yuji Kanda</Authors>
     <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
@@ -40,10 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="$(OutputPath)\**\*.resources.dll" 
-          Pack="true" 
-          PackagePath="analyzers/dotnet/cs/" 
-          Visible="false" />
+    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs/" Visible="false" />
   </ItemGroup>
 
 </Project>

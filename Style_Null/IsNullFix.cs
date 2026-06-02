@@ -21,7 +21,7 @@ public class IsNullFix : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root is null) return;
 
-        // 💡 共通拡張メソッドでスマートに逆引き
+        // 共通拡張メソッドでスマートに逆引き
         var binaryExpr = root.FindNodeAtSpan<BinaryExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (binaryExpr is null) return;
 
@@ -57,7 +57,7 @@ public class IsNullFix : CodeFixProvider
             newExpression = SyntaxFactory.IsPatternExpression(targetExpression, isToken, SyntaxFactory.UnaryPattern(notToken, nullPattern));
         }
 
-        // 💡 式全体の最外殻Trivia防衛も、この1行で美しく完結！
+        // 式全体の最外殻Trivia防衛も、この1行で美しく完結！
         newExpression = newExpression.WithTriviaFrom<ExpressionSyntax>(binaryExpr);
 
         return document.WithSyntaxRoot(root.ReplaceNode(binaryExpr, newExpression));

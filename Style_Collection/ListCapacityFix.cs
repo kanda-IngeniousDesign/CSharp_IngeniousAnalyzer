@@ -22,11 +22,11 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
         var semanticModel = await context.Document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
         if (root is null || semanticModel is null) return;
 
-        // 💡 共通拡張メソッド「FindNodeAtSpan」で一撃取得
+        // 共通拡張メソッド「FindNodeAtSpan」で一撃取得
         var objectCreation = root.FindNodeAtSpan<ObjectCreationExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (objectCreation is null) return;
 
-        // 🛠️ 電球を出す前に、共通のデータフロー解析を走らせて安全性を事前チェック
+        // 電球を出す前に、共通のデータフロー解析を走らせて安全性を事前チェック
         var limitExpression = GetLimitExpressionOrNull(objectCreation, semanticModel, context.CancellationToken);
         if (limitExpression is null) return; // 予測不能なループ（!= 100など）は電球メニュー自体を出さない（不発弾ガード）
 
