@@ -23,13 +23,14 @@ public class Nameof : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
         var stringLiteral = (LiteralExpressionSyntax)context.Node;
         var stringValue = stringLiteral.Token.ValueText;
 
         // 空文字や、C#の識別子（変数名）として使えない文字列（空白や記号入り）は即スルー
         if (string.IsNullOrWhiteSpace(stringValue) || !SyntaxFacts.IsValidIdentifier(stringValue)) return;
 
-        // 🛠️ 【スコープ解析】自分が属している直近のメソッド（またはローカル関数）を取得
+        // 【スコープ解析】自分が属している直近のメソッド（またはローカル関数）を取得
         var methodDeclaration = stringLiteral.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
         if (methodDeclaration is null) return;
 

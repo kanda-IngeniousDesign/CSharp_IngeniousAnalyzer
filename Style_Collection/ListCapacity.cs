@@ -22,6 +22,7 @@ public class ListCapacity : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
         var objectCreation = (ObjectCreationExpressionSyntax)context.Node;
 
         // 1. 生成されている型が「List<T>」であるかを検証

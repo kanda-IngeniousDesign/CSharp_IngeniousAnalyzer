@@ -23,6 +23,7 @@ public class StringEmpty : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
         var binaryExpr = (BinaryExpressionSyntax)context.Node;
 
         // 左右のどちらかが大文字の「String.Empty」であるかチェック

@@ -23,6 +23,7 @@ public class IsNull : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
         var binaryExpr = (BinaryExpressionSyntax)context.Node;
 
         // 左辺または右辺が「nullリテラル」であるかチェック

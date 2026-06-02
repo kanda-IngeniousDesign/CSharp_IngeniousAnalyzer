@@ -47,4 +47,12 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         context.RegisterSyntaxNodeAction(AnalyzeNode, TargetKinds);
     }
+
+    public static bool IsGeneratedFile(SyntaxNodeAnalysisContext context)
+    {
+        var filePath = context.Node.SyntaxTree.FilePath;
+        return filePath.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase) ||
+            filePath.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) || // WPF/XAML自動生成用
+            filePath.EndsWith(".generated.cs", StringComparison.OrdinalIgnoreCase);
+    }
 }

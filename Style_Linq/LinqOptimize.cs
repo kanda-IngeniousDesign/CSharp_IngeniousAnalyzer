@@ -25,6 +25,7 @@ public class LinqOptimize : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
         var invocation = (InvocationExpressionSyntax)context.Node;
 
         // 1. 自分自身のメソッド名が FirstOrDefault / Any / Last のいずれかか
