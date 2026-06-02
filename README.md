@@ -35,7 +35,7 @@ Default warning levels are set, but you can adjust them to fit your development 
 <br>
 <br>
 
-# CSharp-CSharp-IngeniousAnalyzer (日本語)
+# CSharp_IngeniousAnalyzer (日本語)
 C#のコード品質を劇的に高める静的アナライザーです。NULLチェックの型安全性欠如や、非効率なLINQ等を自動検知し、安全でクリーンなコードへの修正を支援します。
 <br>
 <br>
