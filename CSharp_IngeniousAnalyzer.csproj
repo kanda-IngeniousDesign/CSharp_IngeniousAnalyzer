@@ -4,8 +4,11 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.2.0</Version>
-    
+    <Version>1.2.1</Version>
+    <PackageReleaseNotes>
+      - パッケージ名称を変更
+      - リソースファイルを参照できない不具合対策
+    </PackageReleaseNotes>    
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
@@ -16,7 +19,7 @@
     <Authors>Yuji Kanda</Authors>
     <Description>C#コードの品質を劇的に高める静的アナライザーです。NULLチェックの型安全性欠如や、非効率なLINQ等を自動検知し、安全でクリーンなコードへの修正を支援します。</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <RepositoryUrl>https://github.com/kanda-IngeniousDesign/CSharp-CSharp-IngeniousAnalyzer.git</RepositoryUrl>
+    <RepositoryUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer.git</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup>
