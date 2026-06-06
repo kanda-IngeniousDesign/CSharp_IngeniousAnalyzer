@@ -4,7 +4,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.0</Version>
+    <Version>1.7.1</Version>
     <PackageReleaseNotes>
       - ToList、ToArrayの適正利用警告を追加
       - Add warnings for proper use of ToList and ToArray
