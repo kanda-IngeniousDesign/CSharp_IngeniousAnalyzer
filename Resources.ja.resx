@@ -17,6 +17,12 @@
   <data name="LINQ001_Title"><value>LINQの無駄な2段階評価を統合し、反復処理のパフォーマンスを向上させます。</value></data>
   <data name="LINQ001_Message"><value>Where().{0}() のチェーンを、単一の '{0}(条件)' に統合して最適化してください。</value></data>
 
+  <data name="LINQ002_Title"><value>無駄なコレクションの確定（ToList/ToArray）を削除し、メモリ使用量を最適化します。</value></data>
+  <data name="LINQ002_Message"><value>'{0}' は列挙後に再利用されていません。不要なコレクションの実体化（メモリ確保）を回避するため、呼び出しを削除してください。</value></data>
+
+  <data name="LINQ003_Title"><value>複数回の列挙を避けるため、ToList/ToArray で結果を確定させてください。</value></data>
+  <data name="LINQ003_Message"><value>'{0}' は複数回列挙されています。メモリを確保して結果を確定させることで、計算の重複を排除しパフォーマンスを向上させてください。</value></data>
+
   <data name="COLL001_Title"><value>Listの初期キャパシティを明示し、内部配列の自動拡張に伴うメモリ再確保のコストを削減します。</value></data>
   <data name="COLL001_Message"><value>ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。</value></data>
 </root>

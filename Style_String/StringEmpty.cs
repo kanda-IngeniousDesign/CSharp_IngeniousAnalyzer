@@ -2,7 +2,6 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using CSharp_IngeniousAnalyzer.Core;
 using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_String;

@@ -33,6 +33,12 @@
   <data name="LINQ001_Title"><value>Combine LINQ 'Where' and selection methods to optimize performance.</value></data>
   <data name="LINQ001_Message"><value>Combine Where().{0}() chain into a single '{0}(condition)'.</value></data>
 
+  <data name="LINQ002_Title"><value>Remove redundant collection materialization (ToList/ToArray) to optimize memory usage.</value></data>
+  <data name="LINQ002_Message"><value>'{0}' is not reused after enumeration. Remove the call to avoid unnecessary memory allocation.</value></data>
+
+  <data name="LINQ003_Title"><value>Add ToList/ToArray to avoid multiple enumerations of the same sequence.</value></data>
+  <data name="LINQ003_Message"><value>'{0}' is enumerated multiple times; materializing it into a collection will improve performance by avoiding redundant calculations.</value></data>
+
   <data name="COLL001_Title"><value>Specify initial capacity for List to reduce memory reallocation overhead.</value></data>
   <data name="COLL001_Message"><value>Specify initial capacity in List constructor as the loop count is predictable.</value></data>
 </root>

@@ -2,8 +2,6 @@ using System.Collections.Immutable;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Resources;
-using System.Globalization;
 
 namespace CSharp_IngeniousAnalyzer.Style__Common;
 
@@ -27,6 +25,10 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         LINQ001_Title,
         LINQ001_Message,
+        LINQ002_Title,
+        LINQ002_Message,
+        LINQ003_Title,
+        LINQ003_Message,
 
         COLL001_Title,
         COLL001_Message,

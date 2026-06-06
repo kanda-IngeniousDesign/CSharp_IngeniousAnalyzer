@@ -1,5 +1,4 @@
-﻿using System.Collections.Immutable;
-using CSharp_IngeniousAnalyzer.Style__Common;
+﻿using CSharp_IngeniousAnalyzer.Style__Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;

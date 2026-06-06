@@ -1,7 +1,7 @@
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Text;
 
-namespace CSharp_IngeniousAnalyzer.Core;
+namespace CSharp_IngeniousAnalyzer.Style__Common;
 
 public static class CommonRoslyn
 {

@@ -5,8 +5,8 @@ using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
-using CSharp_IngeniousAnalyzer.Core;
 using CSharp_IngeniousAnalyzer.Style_String;
+using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_Maintainability;
 
