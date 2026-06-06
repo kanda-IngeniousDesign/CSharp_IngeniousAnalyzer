@@ -4,10 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.1</Version>
+    <Version>1.7.2</Version>
     <PackageReleaseNotes>
-      - ToList、ToArrayの適正利用警告を追加
-      - Add warnings for proper use of ToList and ToArray
+      - NugetパッケージとGitHubリポジトリのURLを更新
+      - Update NuGet package and GitHub repository URLs
     </PackageReleaseNotes>    
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -19,6 +19,7 @@
     <Authors>Yuji Kanda</Authors>
     <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer.git</RepositoryUrl>
   </PropertyGroup>
 
