@@ -9,12 +9,14 @@
       - Readmeに解析項目を追加
       - Add new analyzer rule: Avoid multiple enumeration of IEnumerable without ToList
     </PackageReleaseNotes>    
+    
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
 
     <Authors>Yuji Kanda</Authors>
     <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
