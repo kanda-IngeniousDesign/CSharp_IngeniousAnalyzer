@@ -27,7 +27,7 @@ public class ToListToArrayAddFix : CodeFixProvider
 
         context.RegisterCodeFix(
             CodeAction.Create(
-                title: "Fix : ToList() を追加して結果を確定させる",
+                title: "Fix : ToList() を追加して結果を確定する",
                 createChangedDocument: c => AddToListAsync(context.Document, declaration, c),
                 equivalenceKey: nameof(ToListToArrayAddFix)),
             diagnostic);

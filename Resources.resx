@@ -1,44 +1,34 @@
 <?xml version="1.0" encoding="utf-8"?>
 <root>
-  <xsd:schema id="root" xmlns="" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata">
-    <xsd:element name="root" msdata:IsDataSet="true">
-      <xsd:complexType>
-        <xsd:choice maxOccurs="unbounded">
-          <xsd:element name="data">
-            <xsd:complexType>
-              <xsd:sequence>
-                <xsd:element name="value" type="xsd:string" minOccurs="0" msdata:Ordinal="0" />
-              </xsd:sequence>
-              <xsd:attribute name="name" type="xsd:string" use="required" />
-            </xsd:complexType>
-          </xsd:element>
-        </xsd:choice>
-      </xsd:complexType>
-    </xsd:element>
-  </xsd:schema>
   <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
   <resheader name="version"><value>2.0</value></resheader>
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
-  <data name="NULL001_Title"><value>Use 'is null' pattern matching to avoid unintended operator overload behavior.</value></data>
-  <data name="NULL001_Message"><value>Use type-safe 'is null' pattern instead of comparison operators (== / !=).</value></data>
+  <data name="NULL001_Title"><value>Prevention of operator overloading issues</value></data>
+  <data name="NULL001_Message"><value>Use the type-safe 'is null' pattern instead of operators (== / !=).</value></data>
 
-  <data name="STR001_Title"><value>Use lowercase 'string.Empty' to unify coding styles.</value></data>
-  <data name="STR001_Message"><value>Use lowercase 'string.Empty' instead of '{0}' for consistency.</value></data>
+  <data name="STR001_Title"><value>Optimization by standardizing on string.Empty</value></data>
+  <data name="STR001_Message"><value>Use lowercase 'string.Empty' instead of 'String.{0}' for consistency.</value></data>
 
-  <data name="STR002_Title"><value>Replace string literals with 'nameof' to prevent breaking bugs during refactoring.</value></data>
-  <data name="STR002_Message"><value>Use type-safe 'nameof({0})' instead of the magic string literal '{0}'.</value></data>
+  <data name="STR002_Title"><value>Safety improvement by replacing with nameof</value></data>
+  <data name="STR002_Message"><value>Use type-safe 'nameof({0})' instead of the magic string '{0}'.</value></data>
 
-  <data name="LINQ001_Title"><value>Combine LINQ 'Where' and selection methods to optimize performance.</value></data>
-  <data name="LINQ001_Message"><value>Combine Where().{0}() chain into a single '{0}(condition)'.</value></data>
+  <data name="LINQ001_Title"><value>Performance improvement by integrating LINQ evaluation</value></data>
+  <data name="LINQ001_Message"><value>Integrate the Where().{0}() chain into a single '{0}(predicate)' for optimization.</value></data>
 
-  <data name="LINQ002_Title"><value>Remove redundant collection materialization (ToList/ToArray) to optimize memory usage.</value></data>
-  <data name="LINQ002_Message"><value>'{0}' is not reused after enumeration. Remove the call to avoid unnecessary memory allocation.</value></data>
+  <data name="LINQ002_Title"><value>Removal of unnecessary collection materialization</value></data>
+  <data name="LINQ002_Message"><value>'{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation.</value></data>
 
-  <data name="LINQ003_Title"><value>Add ToList/ToArray to avoid multiple enumerations of the same sequence.</value></data>
-  <data name="LINQ003_Message"><value>'{0}' is enumerated multiple times; materializing it into a collection will improve performance by avoiding redundant calculations.</value></data>
+  <data name="LINQ003_Title"><value>Prevention of re-evaluation by finalizing collection</value></data>
+  <data name="LINQ003_Message"><value>'{0}' is enumerated multiple times. Finalize the result to avoid redundant calculations and improve performance.</value></data>
 
-  <data name="COLL001_Title"><value>Specify initial capacity for List to reduce memory reallocation overhead.</value></data>
-  <data name="COLL001_Message"><value>Specify initial capacity in List constructor as the loop count is predictable.</value></data>
+  <data name="COLL001_Title"><value>Memory reduction by specifying initial List capacity</value></data>
+  <data name="COLL001_Message"><value>Specify an initial capacity in the List constructor as the loop count is predictable.</value></data>
+
+  <data name="COMM001_Title"><value>Missing function header</value></data>
+  <data name="COMM001_Message"><value>Function header is missing. Please add the documentation comments.</value></data>
+  
+  <data name="COMM002_Title"><value>Function header parameter mismatch</value></data>
+  <data name="COMM002_Message"><value>Function header parameters do not match the method definition. Please synchronize '{0}'.</value></data>
 </root>

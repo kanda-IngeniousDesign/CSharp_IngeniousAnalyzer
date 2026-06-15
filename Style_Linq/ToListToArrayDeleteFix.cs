@@ -23,7 +23,7 @@ public class ToListToArrayDeleteCodeFixProvider : CodeFixProvider
         if (invocation != null)
         {
             context.RegisterCodeFix(
-                CodeAction.Create("Fix : 不要な ToList/ToArray を削除", c => RemoveMethodCallAsync(context.Document, invocation, c), "RemoveToList"),
+                CodeAction.Create("Fix : 不要な ToList/ToArray を削除する", c => RemoveMethodCallAsync(context.Document, invocation, c), "RemoveToList"),
                 diagnostic);
         }
     }

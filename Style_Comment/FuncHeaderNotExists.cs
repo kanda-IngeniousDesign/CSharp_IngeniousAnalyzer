@@ -1,0 +1,41 @@
+using CSharp_IngeniousAnalyzer.Style__Common;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+using Microsoft.CodeAnalysis.CSharp.Syntax;
+using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Immutable;
+using System.Linq;
+
+namespace CSharp_IngeniousAnalyzer.Style_Comment;
+
+[DiagnosticAnalyzer(LanguageNames.CSharp)]
+public class FuncHeaderNotExists : CommonAnalyzer
+{
+    public const string DiagnosticId = "COMM001";
+    private const string Category = "Comment";
+    private static readonly LocalizableString Title = CreateLocalStr(nameof(ResourceEnum.COMM001_Title));
+    private static readonly LocalizableString MessageFormat = CreateLocalStr(nameof(ResourceEnum.COMM001_Message));
+
+    protected override DiagnosticDescriptor Rule { get; } = new(
+        DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
+
+    protected override SyntaxKind[] TargetKinds => [SyntaxKind.MethodDeclaration];
+
+protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
+{
+    if (IsGeneratedFile(context)) return;
+    var methodDeclaration = (MethodDeclarationSyntax)context.Node;
+
+    // trivia をすべて結合して、その中に /// があるかをチェックするよりも、
+    // 構造的に DocumentationCommentTriviaSyntax を探す方が確実です
+    var xmlTrivia = methodDeclaration.GetLeadingTrivia()
+        .Select(t => t.GetStructure())
+        .OfType<DocumentationCommentTriviaSyntax>()
+        .FirstOrDefault();
+
+    if (xmlTrivia == null)
+    {
+        // 警告を出す
+        context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation()));
+    }
+}}

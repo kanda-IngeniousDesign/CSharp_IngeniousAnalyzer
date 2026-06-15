@@ -4,10 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.3</Version>
+    <Version>1.7.4</Version>
     <PackageReleaseNotes>
-      - Readmeに解析項目を追加
-      - Add new analyzer rule: Avoid multiple enumeration of IEnumerable without ToList
+      - 関数ヘッダーのコメント解析を追加
+      - Add new analyzer rule: Detect mismatch between function header and parameters.
     </PackageReleaseNotes>    
     
     <Nullable>enable</Nullable>

@@ -5,24 +5,30 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
-  <data name="NULL001_Title"><value>「is null」パターンを使用して、演算子オーバーロードによる意図しない不具合を防止します。</value></data>
+  <data name="NULL001_Title"><value>演算子オーバーロードによる不具合の防止</value></data>
   <data name="NULL001_Message"><value>演算子（== / !=）ではなく、型安全な 'is null' パターンを使用してください。</value></data>
 
-  <data name="STR001_Title"><value>小文字の「string.Empty」に統一し、プロジェクト全体のコードスタイルを最適化します。</value></data>
+  <data name="STR001_Title"><value>string.Emptyへの統一による最適化</value></data>
   <data name="STR001_Message"><value>大文字の 'String.{0}' ではなく、一貫性を持たせるため小文字の 'string.Empty' を使用してください。</value></data>
 
-  <data name="STR002_Title"><value>文字列を「nameof」に置き換え、将来のリファクタリング（変数名変更）時の破壊バグを防止します。</value></data>
+  <data name="STR002_Title"><value>nameofへの置き換えによる安全性の向上</value></data>
   <data name="STR002_Message"><value>マジックナンバー（文字列）の '{0}' ではなく、型安全な 'nameof({0})' を使用してください。</value></data>
 
-  <data name="LINQ001_Title"><value>LINQの無駄な2段階評価を統合し、反復処理のパフォーマンスを向上させます。</value></data>
+  <data name="LINQ001_Title"><value>LINQ評価の統合によるパフォーマンス向上</value></data>
   <data name="LINQ001_Message"><value>Where().{0}() のチェーンを、単一の '{0}(条件)' に統合して最適化してください。</value></data>
 
-  <data name="LINQ002_Title"><value>無駄なコレクションの確定（ToList/ToArray）を削除し、メモリ使用量を最適化します。</value></data>
+  <data name="LINQ002_Title"><value>不要なコレクション確定の削除</value></data>
   <data name="LINQ002_Message"><value>'{0}' は列挙後に再利用されていません。不要なコレクションの実体化（メモリ確保）を回避するため、呼び出しを削除してください。</value></data>
 
-  <data name="LINQ003_Title"><value>複数回の列挙を避けるため、ToList/ToArray で結果を確定させてください。</value></data>
+  <data name="LINQ003_Title"><value>コレクションの確定による再評価の防止</value></data>
   <data name="LINQ003_Message"><value>'{0}' は複数回列挙されています。メモリを確保して結果を確定させることで、計算の重複を排除しパフォーマンスを向上させてください。</value></data>
 
-  <data name="COLL001_Title"><value>Listの初期キャパシティを明示し、内部配列の自動拡張に伴うメモリ再確保のコストを削減します。</value></data>
+  <data name="COLL001_Title"><value>List初期キャパシティ指定によるメモリ削減</value></data>
   <data name="COLL001_Message"><value>ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。</value></data>
+
+  <data name="COMM001_Title"><value>関数ヘッダーの欠落</value></data>
+  <data name="COMM001_Message"><value>関数ヘッダーが記述されていません。コメントを追加してください。</value></data>
+  
+  <data name="COMM002_Title"><value>関数ヘッダーのパラメータの不一致</value></data>
+  <data name="COMM002_Message"><value>関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。</value></data>
 </root>

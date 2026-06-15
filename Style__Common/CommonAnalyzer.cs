@@ -32,6 +32,11 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         COLL001_Title,
         COLL001_Message,
+
+        COMM001_Title,
+        COMM001_Message,
+        COMM002_Title,
+        COMM002_Message,
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)
