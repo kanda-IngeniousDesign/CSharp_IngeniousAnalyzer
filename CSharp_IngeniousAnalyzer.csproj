@@ -4,10 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.4</Version>
+    <Version>1.7.5</Version>
     <PackageReleaseNotes>
-      - 関数ヘッダーのコメント解析を追加
-      - Add new analyzer rule: Detect mismatch between function header and parameters.
+      - Readme.mdに、フィードバックのお願いを追加しました。
+      ー Add new analyzer rule: Detect unused parameters in function.
     </PackageReleaseNotes>    
     
     <Nullable>enable</Nullable>
