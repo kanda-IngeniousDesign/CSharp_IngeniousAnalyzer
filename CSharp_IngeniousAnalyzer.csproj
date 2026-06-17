@@ -21,8 +21,6 @@
     <Authors>Yuji Kanda</Authors>
     <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer.git</RepositoryUrl>
   </PropertyGroup>
 
   <PropertyGroup>
