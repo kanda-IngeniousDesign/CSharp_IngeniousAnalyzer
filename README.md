@@ -1,6 +1,13 @@
-# CSharp_IngeniousAnalyzer
+# CSharp_IngeniousAnalyzer (English)
 
 A static analyzer designed to dramatically improve the code quality of your C# projects. It automatically detects issues such as insecure null checks, inefficient LINQ queries, and magic numbers, helping you maintain a safe and clean codebase.
+
+---
+
+## Feedback
+Thank you very much for using this analyzer in your daily development.
+I created this tool based on my own professional needs, and I am committed to improving it to be more useful for your development workflows. 
+Your feedback is very valuable to me. If you have any requests, suggestions for new rules, or encounter any issues, please feel free to reach out via the "Contact owners" link on the NuGet package page. I would be honored to grow and refine this tool together with all of you.
 
 ---
 
@@ -42,12 +49,24 @@ Default warning levels are set, but you can adjust them to fit your development 
 
 # CSharp_IngeniousAnalyzer (日本語)
 
-C#のコード品質を劇的に高める静的アナライザーです。NULLチェックの型安全性欠如や、非効率なLINQ等を自動検知し、安全でクリーンなコードへの修正を支援します。
+C#のコード品質を劇的に高める静的アナライザーです。
+NULLチェックの型安全性欠如や、非効率なLINQ等を自動検知し、安全でクリーンなコードへの修正を支援します。
+
+---
+
+## フィードバックについて
+本アナライザーを日々ご利用いただき、誠にありがとうございます。
+このツールは私自身が業務で「あったらいいな」と考えたものを形にしたものです。
+至らぬ点もあるかと存じますが、より使いやすく、皆様の開発の助けとなるよう、継続的に改善を行っていきたいと考えています。
+皆様からのご意見は大変貴重な財産です。
+「ここをこうしてほしい」「このルールがあると嬉しい」といったご要望やフィードバックがございましたら、NuGetページ右下の「Contact owners」よりお気軽にご連絡ください。
+皆様と一緒にこのツールを育てていけたら幸いです。
 
 ---
 
 ## 使い方
-本アナライザーは Visual Studio の「Live Code Analysis」と完全に統合されています。プロジェクトを開くだけで、コードの編集時に自動的に解析が実行され、問題がある場合はリアルタイムで警告が表示されます。
+本アナライザーは Visual Studio の「Live Code Analysis」と完全に統合されています。
+プロジェクトを開くだけで、コードの編集時に自動的に解析が実行され、問題がある場合はリアルタイムで警告が表示されます。
 
 * 自動的に解析が実行されない場合は、リビルド、VS再起動、またはプロジェクトルートにある .vs フォルダー（隠しフォルダー）の削除を試してください。
 
@@ -63,7 +82,6 @@ C#のコード品質を劇的に高める静的アナライザーです。NULL�
 ### 例: COL001の警告を info に変更する
 * 変更前 : 
 `dotnet_diagnostic.COL001.severity = warning`
-
 * 変更後 : 
 `dotnet_diagnostic.COL001.severity = info`
 
