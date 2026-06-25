@@ -4,10 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.5</Version>
+    <Version>1.7.6</Version>
     <PackageReleaseNotes>
-      - Readme.mdに、フィードバックのお願いを追加しました。
-      ー Add new analyzer rule: Detect unused parameters in function.
+      - 関数のセマンティック複雑度測定（CPX001）を追加しました。
+      - Add semantic complexity measurement for functions (CPX001).
     </PackageReleaseNotes>    
     
     <Nullable>enable</Nullable>
