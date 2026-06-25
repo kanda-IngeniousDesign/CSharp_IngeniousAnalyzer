@@ -31,4 +31,7 @@
   
   <data name="COMM002_Title"><value>関数ヘッダーのパラメータの不一致</value></data>
   <data name="COMM002_Message"><value>関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。</value></data>
+
+  <data name="CPX001_Title" xml:space="preserve"><value>メソッドの複雑度削減による可読性の向上</value></data>
+  <data name="CPX001_Message" xml:space="preserve"><value>メソッド '{0}' の複雑度が {1} です（閾値: 17）。処理の分割やリファクタリングを検討してください。</value></data>
 </root>

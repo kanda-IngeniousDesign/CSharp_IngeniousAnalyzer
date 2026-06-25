@@ -31,4 +31,7 @@
   
   <data name="COMM002_Title"><value>Function header parameter mismatch</value></data>
   <data name="COMM002_Message"><value>Function header parameters do not match the method definition. Please synchronize '{0}'.</value></data>
+
+  <data name="CPX001_Title" xml:space="preserve"><value>Improve readability by reducing method complexity</value></data>
+  <data name="CPX001_Message" xml:space="preserve"><value>Method '{0}' has a complexity of {1} (threshold: 17). Consider refactoring or splitting the logic.</value></data>
 </root>
