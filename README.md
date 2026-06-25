@@ -44,7 +44,7 @@ Default warning levels are set, but you can adjust them to fit your development 
 | **COLL001** | Memory reduction by specifying initial List capacity | Specify an initial capacity in the List constructor as the loop count is predictable. |
 | **COMM001** | Missing function header | Function header is missing. Please add the documentation comments. |
 | **COMM002** | Function header parameter mismatch | Function header parameters do not match the method definition. Please synchronize '{0}'. |
-| **CPX001** | Improve readability by reducing method complexity | Method '{0}' has a complexity of {1} (threshold: 20). Consider refactoring or splitting the logic. |
+| **CPX001** | Improve readability by reducing method complexity | Method '{0}' has a complexity of {1} (threshold: 17). Consider refactoring or splitting the logic. |
 
 <br>
 
@@ -99,4 +99,4 @@ NULLチェックの型安全性欠如や、非効率なLINQ等を自動検知し
 | **COLL001** | List初期キャパシティ指定によるメモリ削減 | ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。 |
 | **COMM001** | 関数ヘッダーの欠落 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
 | **COMM002** | 関数ヘッダーのパラメータ不一致 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |
-| **CPX001** | メソッドの複雑度削減による可読性の向上 | メソッド '{0}' の複雑度が {1} です（閾値: 20）。分割やリファクタリングを検討してください。|
+| **CPX001** | メソッドの複雑度削減による可読性の向上 | メソッド '{0}' の複雑度が {1} です（閾値: 17）。分割やリファクタリングを検討してください。|
