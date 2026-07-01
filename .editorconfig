@@ -13,3 +13,6 @@ dotnet_diagnostic.NUL001.severity = warning
 # --- String Rules (Empty check optimization, interpolation usage) ---
 dotnet_diagnostic.STR001.severity = warning
 dotnet_diagnostic.STR002.severity = warning
+
+# IDE0130: Namespace がフォルダー構造と一致しません
+dotnet_diagnostic.IDE0130.severity = error

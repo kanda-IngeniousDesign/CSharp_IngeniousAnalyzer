@@ -39,7 +39,10 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
         COMM002_Message,
 
         CPX001_Title,
-        CPX001_Message
+        CPX001_Message,
+
+        COMP001_Title,
+        COMP001_Message
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)

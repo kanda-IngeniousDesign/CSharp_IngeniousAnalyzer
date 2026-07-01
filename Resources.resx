@@ -34,4 +34,7 @@
 
   <data name="CPX001_Title" xml:space="preserve"><value>Improve readability by reducing method complexity</value></data>
   <data name="CPX001_Message" xml:space="preserve"><value>Method '{0}' has a complexity of {1} (threshold: 17). Consider refactoring or splitting the logic.</value></data>
+
+  <data name="COMP001_Title"><value>Standardization of inequality operator direction</value></data>
+  <data name="COMP001_Message"><value>lease reverse the inequality signs to improve readability.</value></data>
 </root>

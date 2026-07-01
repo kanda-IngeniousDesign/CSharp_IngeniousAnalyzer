@@ -35,58 +35,55 @@ public class FuncHeaderMismatchesFix : CodeFixProvider
     }
 
 
-private async Task<Document> SyncParamsAsync(Document document, MethodDeclarationSyntax methodDecl, CancellationToken cancellationToken)
-{
-    var sourceText = await document.GetTextAsync(cancellationToken);
-    
-    var xmlTrivia = methodDecl.GetLeadingTrivia()
-        .Select(i => i.GetStructure())
-        .OfType<DocumentationCommentTriviaSyntax>()
-        .FirstOrDefault();
-
-    if (xmlTrivia == null) return document;
-
-    var originalComment = xmlTrivia.ToString();
-    string lineBreak = originalComment.Contains("\r\n") ? "\r\n" : "\n";
-    var lines = originalComment.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
-    
-    // 3. paramタグ以外の行を保持（paramを含む行はここで排除します）
-    var newCommentLines = new List<string>();
-    foreach (var line in lines)
+    private async Task<Document> SyncParamsAsync(Document document, MethodDeclarationSyntax methodDecl, CancellationToken cancellationToken)
     {
-        // paramが含まれる行は無視して、それ以外（summaryなど）を保持
-        if (line.Contains("<param")) continue;
+        var sourceText = await document.GetTextAsync(cancellationToken);
         
-        if (line.Contains("<"))
+        var xmlTrivia = methodDecl.GetLeadingTrivia()
+            .Select(i => i.GetStructure())
+            .OfType<DocumentationCommentTriviaSyntax>()
+            .FirstOrDefault();
+
+        if (xmlTrivia == null) return document;
+
+        var originalComment = xmlTrivia.ToString();
+        string lineBreak = originalComment.Contains("\r\n") ? "\r\n" : "\n";
+        var lines = originalComment.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
+        
+        // 3. paramタグ以外の行を保持（paramを含む行はここで排除します）
+        var newCommentLines = new List<string>();
+        foreach (var line in lines)
         {
-            if (line.Contains("///"))
-                newCommentLines.Add(line);
-            else
-                newCommentLines.Add("///" + line);
-            continue;
-        }                
-        newCommentLines.Add(line);
+            // paramが含まれる行は無視して、それ以外（summaryなど）を保持
+            if (line.Contains("<param")) continue;
+            
+            if (line.Contains("<"))
+            {
+                if (line.Contains("///"))
+                    newCommentLines.Add(line);
+                else
+                    newCommentLines.Add("///" + line);
+                continue;
+            }                
+            newCommentLines.Add(line);
+        }
+        
+        // 4. </summary> の直後を特定
+        int insertIndex = newCommentLines.FindIndex(l => l.Contains("</summary>")) + 1;
+        if (insertIndex <= 0) insertIndex = newCommentLines.Count;
+
+        // 5. 引数の順番通りにすべて挿入（これで順番が保証されます）
+        foreach (var param in methodDecl.ParameterList.Parameters)
+        {
+            var paramName = param.Identifier.ValueText;
+            newCommentLines.Insert(insertIndex, $"    /// <param name=\"{paramName}\"></param>");
+            insertIndex++;
+        }
+
+        // 5. 文字列を再結合して置換
+        var newComment = string.Join(lineBreak, newCommentLines);
+        var newSourceText = sourceText.Replace(xmlTrivia.FullSpan, newComment);
+        
+        return document.WithText(newSourceText);
     }
-    
-    // 4. </summary> の直後を特定
-    int insertIndex = newCommentLines.FindIndex(l => l.Contains("</summary>")) + 1;
-    if (insertIndex <= 0) insertIndex = newCommentLines.Count;
-
-    // 5. 引数の順番通りにすべて挿入（これで順番が保証されます）
-    foreach (var param in methodDecl.ParameterList.Parameters)
-    {
-        var paramName = param.Identifier.ValueText;
-        newCommentLines.Insert(insertIndex, $"    /// <param name=\"{paramName}\"></param>");
-        insertIndex++;
-    }
-
-    // 5. 文字列を再結合して置換
-    var newComment = string.Join(lineBreak, newCommentLines);
-    var newSourceText = sourceText.Replace(xmlTrivia.FullSpan, newComment);
-    
-    return document.WithText(newSourceText);
-}
-
-
-
 }
