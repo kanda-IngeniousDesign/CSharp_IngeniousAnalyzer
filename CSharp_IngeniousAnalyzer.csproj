@@ -4,10 +4,10 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.6</Version>
+    <Version>1.7.7</Version>
     <PackageReleaseNotes>
-      - 関数のセマンティック複雑度測定（CPX001）を追加しました。
-      - Add semantic complexity measurement for functions (CPX001).
+      - 不等号の向きを逆にした場合に警告するルールを追加しました。(COMP001) 
+      - Add a rule that warns when the direction of the inequality sign is reversed. (COMP001)
     </PackageReleaseNotes>    
     
     <Nullable>enable</Nullable>
