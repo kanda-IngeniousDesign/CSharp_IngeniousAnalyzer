@@ -1,13 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <Authors>Yuji Kanda</Authors>
+    <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
+
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer</PackageProjectUrl>
+
+    <RepositoryUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>1.7.7</Version>
+    <Version>2.0.0</Version>
+
     <PackageReleaseNotes>
-      - 不等号の向きを逆にした場合に警告するルールを追加しました。(COMP001) 
-      - Add a rule that warns when the direction of the inequality sign is reversed. (COMP001)
+      - Gitで公開
+      - Publish to NuGet.org
     </PackageReleaseNotes>    
     
     <Nullable>enable</Nullable>
@@ -17,10 +27,6 @@
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
     <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-
-    <Authors>Yuji Kanda</Authors>
-    <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
-    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <PropertyGroup>
