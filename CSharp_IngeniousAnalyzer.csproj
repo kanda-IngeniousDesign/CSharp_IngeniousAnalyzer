@@ -13,11 +13,11 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>2.0.0</Version>
+    <Version>2.1.0</Version>
 
     <PackageReleaseNotes>
-      - Gitで公開
-      - Publish to NuGet.org
+      - COMM001 : extern、abstract、partialを検出対象外としました。
+      - COMM001 : extern, abstract, partial are excluded from detection.
     </PackageReleaseNotes>    
     
     <Nullable>enable</Nullable>

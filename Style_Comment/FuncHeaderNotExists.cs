@@ -21,21 +21,29 @@ public class FuncHeaderNotExists : CommonAnalyzer
 
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.MethodDeclaration];
 
-protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
-{
-    if (IsGeneratedFile(context)) return;
-    var methodDeclaration = (MethodDeclarationSyntax)context.Node;
-
-    // trivia をすべて結合して、その中に /// があるかをチェックするよりも、
-    // 構造的に DocumentationCommentTriviaSyntax を探す方が確実です
-    var xmlTrivia = methodDeclaration.GetLeadingTrivia()
-        .Select(t => t.GetStructure())
-        .OfType<DocumentationCommentTriviaSyntax>()
-        .FirstOrDefault();
-
-    if (xmlTrivia == null)
+    protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
-        // 警告を出す
-        context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation()));
+        if (IsGeneratedFile(context)) return;
+        var methodDeclaration = (MethodDeclarationSyntax)context.Node;
+
+        // 1. extern メソッドを除外
+        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.ExternKeyword))) return;
+
+        // 2. abstract メソッドも除外（実装がないため）
+        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))) return;
+
+        // 3. インターフェース内のメソッド判定（念のため）
+        if (methodDeclaration.Parent is InterfaceDeclarationSyntax) return;
+
+        // 既存のドキュメントコメントチェック
+        var xmlTrivia = methodDeclaration.GetLeadingTrivia()
+            .Select(t => t.GetStructure())
+            .OfType<DocumentationCommentTriviaSyntax>()
+            .FirstOrDefault();
+
+        if (xmlTrivia == null)
+        {
+            context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation()));
+        }
     }
-}}
+}
