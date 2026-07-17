@@ -35,6 +35,10 @@
   <data name="CPX001_Title"><value>メソッドの複雑度削減による可読性の向上</value></data>
   <data name="CPX001_Message"><value>メソッド '{0}' の複雑度が {1} です（閾値: 17）。処理の分割やリファクタリングを検討してください。</value></data>
 
+  <data name="CPX002_Title"><value>メソッド化の推奨</value></data>
+  <data name="CPX002_Message"><value>メソッド '{0}' は {1} 行と長大です。関数呼び出しが {2} 回と少ないため、処理の分割（メソッド抽出）を検討してください。</value></data>
+
   <data name="COMP001_Title"><value>不等号演算子の向きの統一</value></data>
   <data name="COMP001_Message"><value>可読性向上のため、不等号を反転させてください。</value></data>
+
 </root>

@@ -40,6 +40,8 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         CPX001_Title,
         CPX001_Message,
+        CPX002_Title,
+        CPX002_Message,
 
         COMP001_Title,
         COMP001_Message
