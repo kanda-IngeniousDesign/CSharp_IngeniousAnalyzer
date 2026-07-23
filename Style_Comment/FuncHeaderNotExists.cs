@@ -46,7 +46,6 @@ public class FuncHeaderNotExists : CommonAnalyzer
 
         // コメントが存在しない、または有効な <summary> タグが含まれていない場合は COMM001 として警告する
         bool isInvalidComment = xmlTrivia == null || !xmlTrivia.ToString().Contains("<summary>");
-
         if (isInvalidComment)
         {
             context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation()));

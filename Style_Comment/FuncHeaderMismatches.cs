@@ -37,7 +37,7 @@ public class FuncHeaderMismatches : CommonAnalyzer
         // コメントの文字列を取得
         var commentText = xmlTrivia.ToString();
 
-        // ★ <summary> が含まれていない変則的なコメント（エイリアンコード）の場合は、
+        // <summary> が含まれていない変則的なコメント（エイリアンコード）の場合は、
         // COMM002 の監視対象外としてスキップする（COMM001 や別の仕組みに委ねる）
         if (!commentText.Contains("<summary>")) return;
 

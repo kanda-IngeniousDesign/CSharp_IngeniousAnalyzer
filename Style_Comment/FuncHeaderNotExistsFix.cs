@@ -55,7 +55,7 @@ public class FuncHeaderNotExistsFixer : CodeFixProvider
         
         // SourceTextの文字列表現から改行コードを判定（または安全にファイルを走査）
         var textStr = sourceText.ToString();
-        var newLine = textStr.Contains("\r\n") ? "\r\n" : "\n";        
+        var newLine = textStr.Contains("\r\n") ? "\r\n" : "\n";
         var fullComment = string.Join(newLine, lines) + newLine;        
         var textChange = new TextChange(new TextSpan(line.Start, 0), fullComment);
         

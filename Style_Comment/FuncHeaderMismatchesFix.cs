@@ -81,16 +81,6 @@ private async Task<Document> SyncParamsAsync(Document document, MethodDeclaratio
         return document.WithText(sourceText.WithChanges(textChange));
     }
 
-    private string DetectLineBreak(string comment)
-    {
-        return comment.Contains("\r\n") ? "\r\n" : "\n";
-    }
-
-    private List<string> SplitIntoLines(string comment)
-    {
-        return comment.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
-    }
-
     private List<string> RemoveExistingParams(List<string> lines)
     {
         var result = new List<string>();
