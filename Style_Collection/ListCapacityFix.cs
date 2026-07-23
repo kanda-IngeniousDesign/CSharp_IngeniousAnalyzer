@@ -84,6 +84,7 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
                     }
                 }
             }
+
             if (targetForLoop != null) break;
         }
 

@@ -118,6 +118,7 @@ public class ToListToArrayAdd : CommonAnalyzer
             }
             break;
         }
+        
         return false;
     }
 

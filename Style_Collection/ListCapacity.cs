@@ -103,6 +103,7 @@ public class ListCapacity : CommonAnalyzer
                     }
                 }
             }
+
             if (targetForLoop != null) break;
         }
 

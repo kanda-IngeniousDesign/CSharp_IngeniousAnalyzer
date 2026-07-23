@@ -49,7 +49,7 @@ public class Nameof : CommonAnalyzer
 
         if (!hasMatchingSymbol) return;
 
-        // ★ 追加ガード：もしローカル変数が対象の場合、その文字列リテラルが「変数の宣言位置よりも上（手前）」にあれば警告しない
+        // 追加ガード：もしローカル変数が対象の場合、その文字列リテラルが「変数の宣言位置よりも上（手前）」にあれば警告しない
         if (targetVariable is not null && IsBeforeDeclaration(stringLiteral, targetVariable))
         {
             return;

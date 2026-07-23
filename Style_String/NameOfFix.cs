@@ -41,7 +41,7 @@ public class NameofOptimizationFix : CodeFixProvider
 
         var variableName = stringLiteral.Token.ValueText;
 
-        // 🛠️ 「nameof(変数名)」というInvocationExpression（メソッド呼び出し式）を精密にビルド
+        // 「nameof(変数名)」というInvocationExpression（メソッド呼び出し式）を精密にビルド
         var nameofIdentifier = SyntaxFactory.IdentifierName("nameof");
         var argument = SyntaxFactory.Argument(SyntaxFactory.IdentifierName(variableName));
         var argumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList(new[] { argument }));
