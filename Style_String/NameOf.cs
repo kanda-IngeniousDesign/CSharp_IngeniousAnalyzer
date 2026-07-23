@@ -17,7 +17,6 @@ public class Nameof : CommonAnalyzer
     protected override DiagnosticDescriptor Rule { get; } = new(
         DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-    // 今回のターゲットは「文字列リテラル（StringLiteralExpression）」を片っ端からスキャン！
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.StringLiteralExpression];
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
@@ -26,10 +25,10 @@ public class Nameof : CommonAnalyzer
         var stringLiteral = (LiteralExpressionSyntax)context.Node;
         var stringValue = stringLiteral.Token.ValueText;
 
-        // 空文字や、C#の識別子（変数名）として使えない文字列（空白や記号入り）は即スルー
         if (string.IsNullOrWhiteSpace(stringValue) || !SyntaxFacts.IsValidIdentifier(stringValue)) return;
 
-        // 【スコープ解析】自分が属している直近のメソッド（またはローカル関数）を取得
+        if (IsInsideOwnInitializer(stringLiteral, stringValue)) return;
+
         var methodDeclaration = stringLiteral.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault();
         if (methodDeclaration is null) return;
 
@@ -38,19 +37,56 @@ public class Nameof : CommonAnalyzer
             .Any(p => p.Identifier.ValueText == stringValue);
 
         // 2. 引数に無ければ、メソッド内部の「ローカル変数名」もスキャン
+        VariableDeclaratorSyntax? targetVariable = null;
         if (!hasMatchingSymbol)
         {
-            hasMatchingSymbol = methodDeclaration.DescendantNodes()
+            targetVariable = methodDeclaration.DescendantNodes()
                 .OfType<VariableDeclaratorSyntax>()
-                .Any(v => v.Identifier.ValueText == stringValue);
+                .FirstOrDefault(v => v.Identifier.ValueText == stringValue);
+
+            hasMatchingSymbol = targetVariable is not null;
         }
 
-        // 【製品としての安全弁（パターン④対策）】
-        // スコープ内に一致する引数・変数が1つも無い場合は、ただの一般的な文字列なので完全スルー！
         if (!hasMatchingSymbol) return;
 
-        // 一致するものが見つかった場合のみ、安全に波線を引く
+        // ★ 追加ガード：もしローカル変数が対象の場合、その文字列リテラルが「変数の宣言位置よりも上（手前）」にあれば警告しない
+        if (targetVariable is not null && IsBeforeDeclaration(stringLiteral, targetVariable))
+        {
+            return;
+        }
+
         var diagnostic = Diagnostic.Create(Rule, stringLiteral.GetLocation(), stringValue);
         context.ReportDiagnostic(diagnostic);
+    }
+
+    /// <summary>
+    /// 文字列リテラルが、該当する変数の宣言位置よりもソースコード上で手前（上側）にあるかを判定する
+    /// </summary>
+    private static bool IsBeforeDeclaration(LiteralExpressionSyntax stringLiteral, VariableDeclaratorSyntax declarator)
+    {
+        // 構文木のソーススパン（文字位置）を比較して、リテラルが変数の宣言より前にあるかチェック
+        return stringLiteral.SpanStart < declarator.SpanStart;
+    }
+
+    /// <summary>
+    /// 文字列リテラルが、自分自身と同名の変数を宣言している VariableDeclarator の初期化子（右辺）の中に存在するかを判定する
+    /// </summary>
+    private static bool IsInsideOwnInitializer(LiteralExpressionSyntax stringLiteral, string stringValue)
+    {
+        // 直近の VariableDeclarator を取得
+        var declarator = stringLiteral.Ancestors().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
+        if (declarator is null) return false;
+
+        // 宣言されている変数名と、文字列リテラルの値が一致しているか
+        if (declarator.Identifier.ValueText != stringValue) return false;
+
+        // 初期化子（= の右側）が存在するか
+        if (declarator.Initializer?.Value is { } initializerValue)
+        {
+            // 文字列リテラルが初期化子そのものである、または初期化子の子孫（内部）に含まれているか
+            return initializerValue == stringLiteral || stringLiteral.Ancestors().Contains(initializerValue);
+        }
+
+        return false;
     }
 }

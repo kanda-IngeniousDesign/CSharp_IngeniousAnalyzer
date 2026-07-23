@@ -43,7 +43,6 @@ public class FuncHeaderNotExistsFixer : CodeFixProvider
 
         var lines = new List<string>
         {
-            $"",
             $"{indent}/// <summary>",
             $"{indent}/// ",
             $"{indent}/// </summary>"
@@ -54,11 +53,11 @@ public class FuncHeaderNotExistsFixer : CodeFixProvider
             lines.Add($"{indent}/// <param name=\"{name}\"></param>");
         }
         
-        // NewLineを使わず、改行コードを "\n" で明示的に結合
-        var fullComment = string.Join("\n", lines);
-        
-        // 挿入位置を調整して実行
-        var textChange = new TextChange(new TextSpan(methodDecl.FullSpan.Start, 0), fullComment);
+        // SourceTextの文字列表現から改行コードを判定（または安全にファイルを走査）
+        var textStr = sourceText.ToString();
+        var newLine = textStr.Contains("\r\n") ? "\r\n" : "\n";        
+        var fullComment = string.Join(newLine, lines) + newLine;        
+        var textChange = new TextChange(new TextSpan(line.Start, 0), fullComment);
         
         return document.WithText(sourceText.WithChanges(textChange));
     }

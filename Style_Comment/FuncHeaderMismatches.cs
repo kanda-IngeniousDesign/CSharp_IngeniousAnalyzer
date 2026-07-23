@@ -34,6 +34,13 @@ public class FuncHeaderMismatches : CommonAnalyzer
         // コメントがない場合は別のアナライザー(COMM001)の担当とする
         if (xmlTrivia == null) return;
 
+        // コメントの文字列を取得
+        var commentText = xmlTrivia.ToString();
+
+        // ★ <summary> が含まれていない変則的なコメント（エイリアンコード）の場合は、
+        // COMM002 の監視対象外としてスキップする（COMM001 や別の仕組みに委ねる）
+        if (!commentText.Contains("<summary>")) return;
+
         // paramタグの抽出
         var paramTags = xmlTrivia.Content
             .OfType<XmlElementSyntax>()

@@ -28,7 +28,7 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
 
         // 電球を出す前に、共通のデータフロー解析を走らせて安全性を事前チェック
         var limitExpression = GetLimitExpressionOrNull(objectCreation, semanticModel, context.CancellationToken);
-        if (limitExpression is null) return; // 予測不能なループ（!= 100など）は電球メニュー自体を出さない（不発弾ガード）
+        if (limitExpression is null) return; // 予測不能なループやスコープ逆転の変数は電球メニューを出さない（不発弾ガード）
 
         context.RegisterCodeFix(
             CodeAction.Create(
@@ -87,11 +87,12 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
             if (targetForLoop != null) break;
         }
 
-        // 🛠️ 安全弁：未満（LessThan）関係のみを安全に対象にする
+        // 安全弁：未満（LessThan）関係のみを安全に対象にする
         if (targetForLoop?.Condition is BinaryExpressionSyntax binaryExpression && 
             binaryExpression.OperatorToken.IsKind(SyntaxKind.LessThanToken))
         {
-            return binaryExpression.Right;
+            var limitExpr = binaryExpression.Right;
+            return limitExpr;
         }
 
         return null;

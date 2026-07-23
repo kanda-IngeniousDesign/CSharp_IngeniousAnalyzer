@@ -43,6 +43,10 @@ public class ToListToArrayAdd : CommonAnalyzer
         var methodBody = declarator.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
         if (methodBody == null) return;
 
+        // ★ 再代入ガード：後から再代入（query6 = ... など）されている変数の場合は、
+        // 宣言時に .ToList() を付けると型不一致のビルドエラーになるため、警告自体を出さない
+        if (IsReassigned(declarator)) return;
+
         var allReferences = methodBody.DescendantNodes().OfType<IdentifierNameSyntax>()
             .Where(id => SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(id).Symbol, symbol));
 
@@ -60,6 +64,21 @@ public class ToListToArrayAdd : CommonAnalyzer
         {
             context.ReportDiagnostic(Diagnostic.Create(Rule, declarator.GetLocation(), symbol.Name));
         }
+    }
+
+    /// <summary>
+    /// メソッド内で変数が再代入（AssignmentExpression の左辺に登場）されているかを判定する
+    /// </summary>
+    private static bool IsReassigned(VariableDeclaratorSyntax declaration)
+    {
+        var methodBody = declaration.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
+        if (methodBody == null) return false;
+
+        var variableName = declaration.Identifier.ValueText;
+
+        return methodBody.DescendantNodes()
+            .OfType<AssignmentExpressionSyntax>()
+            .Any(assignment => assignment.Left is IdentifierNameSyntax id && id.Identifier.ValueText == variableName);
     }
 
     private static readonly HashSet<string> EnumerationMethods = new(StringComparer.Ordinal)

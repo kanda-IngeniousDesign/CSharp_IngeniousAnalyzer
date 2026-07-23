@@ -34,56 +34,110 @@ public class FuncHeaderMismatchesFix : CodeFixProvider
             diagnostic);
     }
 
-
-    private async Task<Document> SyncParamsAsync(Document document, MethodDeclarationSyntax methodDecl, CancellationToken cancellationToken)
+private async Task<Document> SyncParamsAsync(Document document, MethodDeclarationSyntax methodDecl, CancellationToken cancellationToken)
     {
         var sourceText = await document.GetTextAsync(cancellationToken);
         
-        var xmlTrivia = methodDecl.GetLeadingTrivia()
-            .Select(i => i.GetStructure())
-            .OfType<DocumentationCommentTriviaSyntax>()
-            .FirstOrDefault();
+        // 1. メソッドの直前にあるトリビアから DocumentationCommentTriviaSyntax を取得
+        var leadingTrivia = methodDecl.GetLeadingTrivia();
+        SyntaxTrivia docTrivia = default;
+        foreach (var trivia in leadingTrivia)
+        {
+            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax)
+            {
+                docTrivia = trivia;
+                break;
+            }
+        }
 
-        if (xmlTrivia == null) return document;
+        if (docTrivia == default) return document;
 
-        var originalComment = xmlTrivia.ToString();
-        string lineBreak = originalComment.Contains("\r\n") ? "\r\n" : "\n";
+        var originalComment = docTrivia.ToString();
+        var lineBreak = originalComment.Contains("\r\n") ? "\r\n" : "\n";
         var lines = originalComment.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
         
-        // 3. paramタグ以外の行を保持（paramを含む行はここで排除します）
-        var newCommentLines = new List<string>();
+        // 2. プレフィックス（インデント + "///"）の検出
+        var sampleLine = lines.FirstOrDefault(l => l.Contains("///")) ?? "    /// ";
+        int slashIndex = sampleLine.IndexOf("///");
+        var indent = slashIndex >= 0 ? sampleLine.Substring(0, slashIndex) : "    ";
+        var prefix = indent + "///";
+
+        // 3. 既存の <param> タグを完全に排除
+        var cleanedLines = RemoveExistingParams(lines.ToList());
+
+        // 4. 挿入位置の特定
+        int insertIndex = DetermineInsertIndex(cleanedLines);
+
+        // 5. メソッドの引数の順番通りに <param> タグを生成・挿入
+        var finalLines = InsertParameters(cleanedLines, methodDecl.ParameterList.Parameters, prefix, insertIndex);
+
+        var newCommentText = string.Join(lineBreak, finalLines);
+
+        // 6. 【超重要】docTrivia.Span ではなく、メソッド自体の SpanStart から逆算するか、
+        // あるいは sourceText から安全に位置を特定してテキスト変更を行うことで誤爆を根絶する
+        // docTrivia.FullSpan や Span に余分な改行が含まれる場合があるため、
+        // 該当コメントの開始位置から文字数を正確に合わせた TextChange を適用します。
+        var textChange = new TextChange(docTrivia.Span, newCommentText);
+        return document.WithText(sourceText.WithChanges(textChange));
+    }
+
+    private string DetectLineBreak(string comment)
+    {
+        return comment.Contains("\r\n") ? "\r\n" : "\n";
+    }
+
+    private List<string> SplitIntoLines(string comment)
+    {
+        return comment.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None).ToList();
+    }
+
+    private List<string> RemoveExistingParams(List<string> lines)
+    {
+        var result = new List<string>();
         foreach (var line in lines)
         {
-            // paramが含まれる行は無視して、それ以外（summaryなど）を保持
-            if (line.Contains("<param")) continue;
-            
-            if (line.Contains("<"))
-            {
-                if (line.Contains("///"))
-                    newCommentLines.Add(line);
-                else
-                    newCommentLines.Add("///" + line);
-                continue;
-            }                
-            newCommentLines.Add(line);
+            var trimmed = line.Trim();
+            if (trimmed.Contains("<param")) continue;
+            result.Add(line);
         }
-        
-        // 4. </summary> の直後を特定
-        int insertIndex = newCommentLines.FindIndex(l => l.Contains("</summary>")) + 1;
-        if (insertIndex <= 0) insertIndex = newCommentLines.Count;
+        return result;
+    }
 
-        // 5. 引数の順番通りにすべて挿入（これで順番が保証されます）
-        foreach (var param in methodDecl.ParameterList.Parameters)
+    private int DetermineInsertIndex(List<string> lines)
+    {
+        // </summary> があればその直後
+        int index = lines.FindIndex(l => l.Contains("</summary>"));
+        if (index >= 0) return index + 1;
+
+        // <summary> がない場合（装飾行のみなど）は、最初の装飾行（---）の下
+        index = lines.FindIndex(l => l.Contains("---"));
+        if (index >= 0) return index + 1;
+
+        // それもなければ最初の意味のある行の直後、または先頭
+        index = lines.FindIndex(l => !string.IsNullOrWhiteSpace(l));
+        return index >= 0 ? index + 1 : 0;
+    }
+
+    private List<string> InsertParameters(List<string> lines, SeparatedSyntaxList<ParameterSyntax> parameters, string prefix, int insertIndex)
+    {
+        var result = new List<string>(lines);
+
+        foreach (var param in parameters)
         {
             var paramName = param.Identifier.ValueText;
-            newCommentLines.Insert(insertIndex, $"    /// <param name=\"{paramName}\"></param>");
+            var paramLine = $"{prefix} <param name=\"{paramName}\"></param>";
+            
+            if (insertIndex >= 0 && insertIndex <= result.Count)
+            {
+                result.Insert(insertIndex, paramLine);
+            }
+            else
+            {
+                result.Add(paramLine);
+            }
             insertIndex++;
         }
 
-        // 5. 文字列を再結合して置換
-        var newComment = string.Join(lineBreak, newCommentLines);
-        var newSourceText = sourceText.Replace(xmlTrivia.FullSpan, newComment);
-        
-        return document.WithText(newSourceText);
+        return result;
     }
 }

@@ -13,11 +13,11 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>2.2.0</Version>
+    <Version>2.2.1</Version>
 
     <PackageReleaseNotes>
-      - メソッド品質改善機能の強化: CPX002 (FatMethod) を追加しました。CPX001 (複雑度) と合わせて、メソッドの肥大化と複雑化を二重でガードし、保守性を高めます。
-      - Enhanced method quality check: Added CPX002 (FatMethod). Combined with CPX001 (Complexity), this provides dual protection against bloated and overly complex methods to significantly improve maintainability.
+      - COMM001,002,COLL001,LINQ003,STR002 の不具合対策
+      - Bug fixes for COMM001,002,COLL001,LINQ003,STR002
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>

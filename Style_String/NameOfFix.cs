@@ -8,7 +8,7 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 using CSharp_IngeniousAnalyzer.Style_String;
 using CSharp_IngeniousAnalyzer.Style__Common;
 
-namespace CSharp_IngeniousAnalyzer.Style_Maintainability;
+namespace CSharp_IngeniousAnalyzer.Style_String;
 
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NameofOptimizationFix)), Shared]
 public class NameofOptimizationFix : CodeFixProvider

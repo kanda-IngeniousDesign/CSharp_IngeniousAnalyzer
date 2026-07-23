@@ -35,13 +35,19 @@ public class FuncHeaderNotExists : CommonAnalyzer
         // 3. インターフェース内のメソッド判定（念のため）
         if (methodDeclaration.Parent is InterfaceDeclarationSyntax) return;
 
+        //　4. override メソッドも除外（コメントが重複するため）
+        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))) return;
+
         // 既存のドキュメントコメントチェック
         var xmlTrivia = methodDeclaration.GetLeadingTrivia()
             .Select(t => t.GetStructure())
             .OfType<DocumentationCommentTriviaSyntax>()
             .FirstOrDefault();
 
-        if (xmlTrivia == null)
+        // コメントが存在しない、または有効な <summary> タグが含まれていない場合は COMM001 として警告する
+        bool isInvalidComment = xmlTrivia == null || !xmlTrivia.ToString().Contains("<summary>");
+
+        if (isInvalidComment)
         {
             context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation()));
         }
