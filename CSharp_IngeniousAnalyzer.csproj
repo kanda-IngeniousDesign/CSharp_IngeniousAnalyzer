@@ -13,11 +13,11 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>2.2.3</Version>
+    <Version>2.2.4</Version>
 
     <PackageReleaseNotes>
-      - COMM001,002,COLL001,LINQ003,STR002 の不具合対策
-      - Bug fixes for COMM001,002,COLL001,LINQ003,STR002
+      - エイリアンコード対策
+      - Countermeasure for alien code
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>

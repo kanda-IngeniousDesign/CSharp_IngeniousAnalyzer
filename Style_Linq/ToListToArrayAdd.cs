@@ -1,3 +1,6 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -17,49 +20,28 @@ public class ToListToArrayAdd : CommonAnalyzer
     protected override DiagnosticDescriptor Rule { get; } = new(
         DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
-    // 変数宣言を起点にする
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.VariableDeclarator];
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
         var declarator = (VariableDeclaratorSyntax)context.Node;
-        if (declarator.Initializer?.Value is not InvocationExpressionSyntax invocation) return;
+        if (!TryGetValidInitialization(declarator, out var invocation)) return;
 
         var model = context.SemanticModel;
-        var methodSymbol = model.GetSymbolInfo(invocation, context.CancellationToken).Symbol as IMethodSymbol;
-        
-        // 1. LINQメソッドであること（かつ ToList/ToArray ではないこと）を確認
-        if (methodSymbol == null || methodSymbol.ContainingType.ToDisplayString() != "System.Linq.Enumerable")
-            return;
+        var cancellationToken = context.CancellationToken;
 
-        var name = methodSymbol.Name;
-        if (name == "ToList" || name == "ToArray") return; // すでに確定済みなら対象外（LINQ002の領分）
+        if (!IsTargetLinqMethod(invocation, model, cancellationToken)) return;
 
-        // 2. 変数のシンボルを取得
-        var symbol = model.GetDeclaredSymbol(declarator, context.CancellationToken);
+        var symbol = model.GetDeclaredSymbol(declarator, cancellationToken);
         if (symbol == null) return;
 
-        // 3. メソッド内で変数が何回「列挙」されているかカウント
         var methodBody = declarator.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
         if (methodBody == null) return;
 
-        // ★ 再代入ガード：後から再代入（query6 = ... など）されている変数の場合は、
-        // 宣言時に .ToList() を付けると型不一致のビルドエラーになるため、警告自体を出さない
-        if (IsReassigned(declarator)) return;
+        if (IsReassigned(declarator, methodBody)) return;
 
-        var allReferences = methodBody.DescendantNodes().OfType<IdentifierNameSyntax>()
-            .Where(id => SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(id).Symbol, symbol));
+        int enumerationCount = CountEnumerations(symbol, methodBody, model);
 
-        int enumerationCount = 0;
-        foreach (var refNode in allReferences)
-        {
-            if (IsEnumerated(refNode))
-            {
-                enumerationCount++;
-            }
-        }
-
-        // 4. 2回以上列挙されている場合に警告
         if (enumerationCount >= 2)
         {
             context.ReportDiagnostic(Diagnostic.Create(Rule, declarator.GetLocation(), symbol.Name));
@@ -67,18 +49,64 @@ public class ToListToArrayAdd : CommonAnalyzer
     }
 
     /// <summary>
-    /// メソッド内で変数が再代入（AssignmentExpression の左辺に登場）されているかを判定する
+    /// 変数宣言の初期化式が有効なLINQメソッド呼び出しであるかを検証します
     /// </summary>
-    private static bool IsReassigned(VariableDeclaratorSyntax declaration)
+    private static bool TryGetValidInitialization(VariableDeclaratorSyntax declarator, out InvocationExpressionSyntax invocation)
     {
-        var methodBody = declaration.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
-        if (methodBody == null) return false;
+        invocation = declarator.Initializer?.Value as InvocationExpressionSyntax;
+        return invocation != null;
+    }
 
+    /// <summary>
+    /// 対象のメソッド呼び出しがLINQの遅延評価メソッドであり、すでに実体化されていないかを判定します
+    /// </summary>
+    private static bool IsTargetLinqMethod(InvocationExpressionSyntax invocation, SemanticModel model, System.Threading.CancellationToken cancellationToken)
+    {
+        var methodSymbol = model.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
+        if (methodSymbol == null || methodSymbol.ContainingType.ToDisplayString() != "System.Linq.Enumerable")
+        {
+            return false;
+        }
+
+        var name = methodSymbol.Name;
+        // すでに実体化されている場合はLINQ003の対象外
+        if (name == "ToList" || name == "ToArray")
+        {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// メソッド内で変数が再代入されているかを判定します
+    /// </summary>
+    private static bool IsReassigned(VariableDeclaratorSyntax declaration, BlockSyntax methodBody)
+    {
         var variableName = declaration.Identifier.ValueText;
 
         return methodBody.DescendantNodes()
             .OfType<AssignmentExpressionSyntax>()
             .Any(assignment => assignment.Left is IdentifierNameSyntax id && id.Identifier.ValueText == variableName);
+    }
+
+    /// <summary>
+    /// メソッド内で変数が何回列挙されているかをカウントします
+    /// </summary>
+    private static int CountEnumerations(ISymbol symbol, BlockSyntax methodBody, SemanticModel model)
+    {
+        var allReferences = methodBody.DescendantNodes().OfType<IdentifierNameSyntax>()
+            .Where(id => SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(id).Symbol, symbol));
+
+        int count = 0;
+        foreach (var refNode in allReferences)
+        {
+            if (IsEnumerated(refNode))
+            {
+                count++;
+            }
+        }
+        return count;
     }
 
     private static readonly HashSet<string> EnumerationMethods = new(StringComparer.Ordinal)
@@ -87,17 +115,19 @@ public class ToListToArrayAdd : CommonAnalyzer
         "First", "FirstOrDefault", "Last", "LastOrDefault",
         "Single", "SingleOrDefault", "ElementAt", "ElementAtOrDefault",
         "ToList", "ToArray", "ToDictionary", "ToLookup",
-        "Aggregate", "Sum", "Min", "Max", "Average", "Select", "Where", 
-        "OrderBy", "OrderByDescending", "ThenBy", "ThenByDescending"
+        "Aggregate", "Sum", "Min", "Max", "Average"
     };
 
+    /// <summary>
+    /// 指定された参照ノードが列挙操作の対象となっているかを判定します
+    /// </summary>
     private static bool IsEnumerated(SyntaxNode node)
     {
-        // 1. 基本チェック：foreach
         if (node.Parent is ForEachStatementSyntax forEach && forEach.Expression == node)
+        {
             return true;
+        }
 
-        // 2. メソッドチェーンを一番上まで遡る
         var current = node.Parent;
         while (current is MemberAccessExpressionSyntax memberAccess)
         {
@@ -106,10 +136,11 @@ public class ToListToArrayAdd : CommonAnalyzer
             {
                 var methodName = memberAccess.Name.Identifier.ValueText;
 
-                // 終端（列挙メソッド）なら true
-                if (EnumerationMethods.Contains(methodName)) return true;
+                if (EnumerationMethods.Contains(methodName))
+                {
+                    return true;
+                }
 
-                // 変換メソッドなら、その結果(Invocation)を次の起点にしてさらに上に遡る
                 if (TransformationMethods.Contains(methodName))
                 {
                     current = invocation.Parent;
@@ -122,16 +153,10 @@ public class ToListToArrayAdd : CommonAnalyzer
         return false;
     }
 
-    // 変換メソッド（それ自体は列挙しないが、列挙チェーンを継続させるもの）
     private static readonly HashSet<string> TransformationMethods = new(StringComparer.Ordinal)
     {
         "Select", "SelectMany", "Where", "OrderBy", "OrderByDescending",
         "ThenBy", "ThenByDescending", "GroupBy", "Take", "Skip",
         "Reverse", "OfType", "Cast"
     };
-
-    private static bool IsTransformationMethod(string methodName)
-    {
-        return TransformationMethods.Contains(methodName);
-    }
 }

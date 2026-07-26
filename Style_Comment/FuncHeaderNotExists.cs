@@ -44,11 +44,39 @@ public class FuncHeaderNotExists : CommonAnalyzer
             .OfType<DocumentationCommentTriviaSyntax>()
             .FirstOrDefault();
 
-        // コメントが存在しない、または有効な <summary> タグが含まれていない場合は COMM001 として警告する
-        bool isInvalidComment = xmlTrivia == null || !xmlTrivia.ToString().Contains("<summary>");
+        // 1. コメント自体が存在しない
+        // 2. コメントはあるが、中に <summary> タグが含まれていない
+        bool isInvalidComment = xmlTrivia == null;
+
+        if (xmlTrivia != null)
+        {
+            var summaryElement = GetElementsRecursive(xmlTrivia.Content)
+                .FirstOrDefault(e => e.StartTag.Name.ToString() == "summary");
+
+            if (summaryElement == null)
+            {
+                isInvalidComment = true;
+            }
+        }
+
         if (isInvalidComment)
         {
             context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation()));
+        }
+    }
+
+    private static IEnumerable<XmlElementSyntax> GetElementsRecursive(SyntaxList<XmlNodeSyntax> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node is XmlElementSyntax element)
+            {
+                yield return element;
+                foreach (var child in GetElementsRecursive(element.Content))
+                {
+                    yield return child;
+                }
+            }
         }
     }
 }

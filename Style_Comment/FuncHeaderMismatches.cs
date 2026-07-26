@@ -41,9 +41,8 @@ public class FuncHeaderMismatches : CommonAnalyzer
         // COMM002 の監視対象外としてスキップする（COMM001 や別の仕組みに委ねる）
         if (!commentText.Contains("<summary>")) return;
 
-        // paramタグの抽出
-        var paramTags = xmlTrivia.Content
-            .OfType<XmlElementSyntax>()
+        // paramタグの抽出（SyntaxList 内の要素や入れ子から安全に param タグを再帰的に抽出する）
+        var paramTags = GetElementsRecursive(xmlTrivia.Content)
             .Where(e => e.StartTag.Name.ToString() == "param")
             .Select(e => e.StartTag.Attributes.OfType<XmlNameAttributeSyntax>().FirstOrDefault()?.Identifier.Identifier.ValueText)
             .Where(name => name != null)
@@ -63,6 +62,24 @@ public class FuncHeaderMismatches : CommonAnalyzer
             var details = string.Join(", ", missingParams.Concat(extraParams));
 
             context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation(), details));
+        }
+    }
+
+    /// <summary>
+    /// SyntaxList や XmlNodeSyntax の中から XmlElementSyntax を安全に再帰抽出するヘルパー
+    /// </summary>
+    private static IEnumerable<XmlElementSyntax> GetElementsRecursive(SyntaxList<XmlNodeSyntax> nodes)
+    {
+        foreach (var node in nodes)
+        {
+            if (node is XmlElementSyntax element)
+            {
+                yield return element;
+                foreach (var child in GetElementsRecursive(element.Content))
+                {
+                    yield return child;
+                }
+            }
         }
     }
 }

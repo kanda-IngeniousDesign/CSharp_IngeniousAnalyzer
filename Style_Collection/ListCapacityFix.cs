@@ -1,5 +1,8 @@
 using System.Collections.Immutable;
 using System.Composition;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using CSharp_IngeniousAnalyzer.Style__Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
@@ -9,8 +12,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CSharp_IngeniousAnalyzer.Style_Collection;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ListCapacityCodeFixProvider)), Shared]
-public class ListCapacityCodeFixProvider : CodeFixProvider
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ListCapacityCodeFix)), Shared]
+public class ListCapacityCodeFix : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [ListCapacity.DiagnosticId];
 
@@ -26,9 +29,9 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
         var objectCreation = root.FindNodeAtSpan<ObjectCreationExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (objectCreation is null) return;
 
-        // 電球を出す前に、共通のデータフロー解析を走らせて安全性を事前チェック
+        // 電球を出す前に、安全性を事前チェック
         var limitExpression = GetLimitExpressionOrNull(objectCreation, semanticModel, context.CancellationToken);
-        if (limitExpression is null) return; // 予測不能なループやスコープ逆転の変数は電球メニューを出さない（不発弾ガード）
+        if (limitExpression is null) return;
 
         context.RegisterCodeFix(
             CodeAction.Create(
@@ -93,9 +96,38 @@ public class ListCapacityCodeFixProvider : CodeFixProvider
             binaryExpression.OperatorToken.IsKind(SyntaxKind.LessThanToken))
         {
             var limitExpr = binaryExpression.Right;
+
+            // 上限値が変数であり、かつリスト生成よりも「後」に宣言されている場合はビルドエラーを防ぐため除外する
+            if (IsVariableDeclaredAfter(limitExpr, objectCreation, semanticModel, cancellationToken))
+            {
+                return null;
+            }
+
             return limitExpr;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// ループ上限値が変数であり、かつリスト生成よりも後で宣言されているかを判定する補助メソッド
+    /// </summary>
+    private static bool IsVariableDeclaredAfter(ExpressionSyntax limitExpr, ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CancellationToken cancellationToken)
+    {
+        var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
+        var symbol = symbolInfo.Symbol;
+
+        if (symbol != null)
+        {
+            var syntaxRef = symbol.DeclaringSyntaxReferences.FirstOrDefault();
+            if (syntaxRef != null)
+            {
+                // 変数の宣言位置が、リストのインスタンス化よりも「後」にある場合は真（＝危険なので弾く）
+                return syntaxRef.Span.Start > objectCreation.SpanStart;
+            }
+        }
+
+        // リテラルなどの場合は安全とみなす
+        return false;
     }
 }

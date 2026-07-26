@@ -28,21 +28,21 @@ public class ListCapacity : CommonAnalyzer
         var typeSymbol = context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken).Type as INamedTypeSymbol;
         if (typeSymbol is null || typeSymbol.OriginalDefinition.ToDisplayString() != "System.Collections.Generic.List<T>") return;
 
-        // 2. すでに初期サイズが指定されている、或者コレクション初期化子がある場合はスルー
+        // 2. すでに初期サイズが指定されている、あるいはコレクション初期化子がある場合はスルー
         if ((objectCreation.ArgumentList != null && objectCreation.ArgumentList.Arguments.Count > 0) || objectCreation.Initializer != null) return;
 
-        // ループ条件が「i != 100」のような予測不能なケースは、波線（警告）すら出さずに完全スルーする！
+        // 3. ループ上限式を安全逆引き（取れない場合はスルー）
         var limitExpression = GetLimitExpressionOrNull(objectCreation, context.SemanticModel, context.CancellationToken);
         if (limitExpression is null) return;
 
-        // ★ 改良されたガード：上限値が「変数」であり、かつリスト生成よりも後で宣言されている場合は警告対象外とする
-        // （リテラル定数の場合は位置に関わらず安全なため通過する）
+        // 4. 上限値が「変数」であり、かつリスト生成よりも「後」に宣言されている場合は警告対象外とする
+        // （リテラル定数の場合はシンボルが取れないため安全として通過する）
         if (IsVariableDeclaredAfter(limitExpression, objectCreation, context.SemanticModel, context.CancellationToken))
         {
             return;
         }
 
-        // 安全だと確定したケースのみ警告を通知
+        // 安全かつ確実と確定したケースのみ警告を通知
         var diagnostic = Diagnostic.Create(Rule, objectCreation.GetLocation());
         context.ReportDiagnostic(diagnostic);
     }
@@ -52,13 +52,11 @@ public class ListCapacity : CommonAnalyzer
     /// </summary>
     private static bool IsVariableDeclaredAfter(ExpressionSyntax limitExpr, ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
-        // 上限値の式からシンボル情報を取得（リテラルの場合は Symbol が null になる）
         var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
         var symbol = symbolInfo.Symbol;
 
         if (symbol != null)
         {
-            // ローカル変数やパラメータなどの場合、その宣言位置を取得
             var syntaxRef = symbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef != null)
             {
@@ -67,7 +65,7 @@ public class ListCapacity : CommonAnalyzer
             }
         }
 
-        // シンボルが取れない（リテラル等）場合は、位置の前後関係に関わらず安全とみなして通過させる
+        // リテラルなどの場合は安全とみなす
         return false;
     }
 
@@ -86,11 +84,14 @@ public class ListCapacity : CommonAnalyzer
         if (methodBlock is null) return null;
 
         ForStatementSyntax? targetForLoop = null;
+
+        // メソッド内のすべての for ループを対象にするが、
+        // 「このリストの .Add() を実際に呼び出しているループ」を厳密に探す
         var allForLoops = methodBlock.DescendantNodes().OfType<ForStatementSyntax>();
 
         foreach (var forLoop in allForLoops)
         {
-            var invocations = forLoop.DescendantNodes().OfType<InvocationExpressionSyntax>();
+            var invocations = forLoop.Statement.DescendantNodes().OfType<InvocationExpressionSyntax>();
             foreach (var invocation in invocations)
             {
                 if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
@@ -107,10 +108,28 @@ public class ListCapacity : CommonAnalyzer
             if (targetForLoop != null) break;
         }
 
-        if (targetForLoop?.Condition is BinaryExpressionSyntax binaryExpression && 
+        if (targetForLoop is null) return null;
+
+        // ターゲットとなった for ループのさらに内側に、別の for ループが存在する場合は、
+        // どちらのループ上限を指しているか曖昧になるためスルーする
+        if (targetForLoop.Statement.DescendantNodes().OfType<ForStatementSyntax>().Any())
+        {
+            return null;
+        }
+
+        // 未満（LessThan）関係のみを安全に対象にする
+        if (targetForLoop.Condition is BinaryExpressionSyntax binaryExpression &&
             binaryExpression.OperatorToken.IsKind(SyntaxKind.LessThanToken))
         {
-            return binaryExpression.Right;
+            var limitExpr = binaryExpression.Right;
+
+            // 上限値が変数であり、かつリスト生成よりも「後」に宣言されている場合は除外する
+            if (IsVariableDeclaredAfter(limitExpr, objectCreation, semanticModel, cancellationToken))
+            {
+                return null;
+            }
+
+            return limitExpr;
         }
 
         return null;
