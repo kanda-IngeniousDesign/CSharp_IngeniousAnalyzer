@@ -29,57 +29,57 @@ public class Nameof : CommonAnalyzer
         if (IsGeneratedFile(context)) return;
 
         SyntaxNode targetNode = context.Node;
-        string text = string.Empty;
 
-        if (targetNode is LiteralExpressionSyntax literal)
-        {
-            text = literal.Token.ValueText;
-        }
-        else if (targetNode is InterpolatedStringTextSyntax textSyntax)
-        {
-            text = textSyntax.TextToken.ValueText;
-        }
+        // 代入の左辺（代入先）になっている場合は除外
+        if (IsAssignmentTarget(targetNode)) return;
 
-        if (string.IsNullOrWhiteSpace(text)) return;
-
+        // 所属する文を取得
         var statement = targetNode.Ancestors().OfType<StatementSyntax>().FirstOrDefault();
         if (statement is null) return;
 
-        var identifiers = statement.DescendantNodes()
-            .OfType<IdentifierNameSyntax>()
-            .Select(id => id.Identifier.ValueText)
-            .ToList();
+        // 代入式が含まれる文全体の場合は除外
+        if (IsInAssignmentStatement(statement)) return;
 
-        if (identifiers.Count == 0) return;
+        string text = ExtractNodeText(targetNode);
+        if (string.IsNullOrEmpty(text)) return;
 
-        var words = text.Split([' ', ':', '=', ',', ';', '\t', '\r', '\n'], System.StringSplitOptions.RemoveEmptyEntries);
-        
-        string matchedIdentifier = null;
-        foreach (var word in words)
-        {
-            bool containsWord = false;
-            foreach (var id in identifiers)
-            {
-                if (id == word)
-                {
-                    containsWord = true;
-                    break;
-                }
-            }
+        // 空白および特定の囲み記号や区切り文字を除外してトリム
+        string trimmedText = TrimSurroundingSymbols(text);
+        if (string.IsNullOrWhiteSpace(trimmedText)) return;
 
-            if (SyntaxFacts.IsValidIdentifier(word) && containsWord)
-            {
-                matchedIdentifier = word;
-                break;
-            }
-        }
+        // トリムした文字列全体が有効な識別子ではない場合は対象外
+        if (!SyntaxFacts.IsValidIdentifier(trimmedText)) return;
 
-        if (matchedIdentifier is null) return;
+        // 文に含まれる変数名・識別子を取得
+        var variableNames = GetValidVariableNames(statement);
+        if (variableNames.Count == 0) return;
 
-        if (IsAssignmentTarget(targetNode)) return;
+        // 変数として存在しない場合は対象外
+        if (!variableNames.Contains(trimmedText)) return;
 
-        var diagnostic = Diagnostic.Create(Rule, targetNode.GetLocation(), matchedIdentifier);
+        var diagnostic = Diagnostic.Create(Rule, targetNode.GetLocation(), trimmedText);
         context.ReportDiagnostic(diagnostic);
+    }
+
+    private static string ExtractNodeText(SyntaxNode node)
+    {
+        return node switch
+        {
+            LiteralExpressionSyntax literal => literal.Token.ValueText,
+            InterpolatedStringTextSyntax textSyntax => textSyntax.TextToken.ValueText,
+            _ => string.Empty
+        };
+    }
+
+    private static string TrimSurroundingSymbols(string text)
+    {
+        char[] charsToTrim = [' ', '\t', '\r', '\n', '[', ']', '(', ')', '{', '}', '"', '\'', '：', ':', ';', ',', '.', '<', '>', '/', '\\', '|', '!', '@', '#', '$', '%', '^', '&', '*', '-', '+', '=', '~', '`'];
+        return text.Trim(charsToTrim);
+    }
+
+    private static bool IsInAssignmentStatement(StatementSyntax statement)
+    {
+        return statement.DescendantNodes().OfType<AssignmentExpressionSyntax>().Any();
     }
 
     private static bool IsAssignmentTarget(SyntaxNode node)
@@ -87,8 +87,36 @@ public class Nameof : CommonAnalyzer
         var assignment = node.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
         if (assignment is not null)
         {
-            return assignment.Left.Span.Contains(node.Span);
+            if (assignment.Left.Span.Contains(node.Span) || assignment.Left.FullSpan.Contains(node.FullSpan))
+            {
+                return true;
+            }
         }
         return false;
+    }
+
+    private static HashSet<string> GetValidVariableNames(StatementSyntax statement)
+    {
+        var identifiers = new HashSet<string>();
+
+        // 変数宣言やパラメータなどの変数名を取得
+        var variableDeclarators = statement.DescendantNodes().OfType<VariableDeclaratorSyntax>();
+        foreach (var declarator in variableDeclarators)
+        {
+            identifiers.Add(declarator.Identifier.ValueText);
+        }
+
+        // 式の中で使われている通常の識別子を取得（メソッド名等を除外）
+        var identifierNames = statement.DescendantNodes().OfType<IdentifierNameSyntax>();
+        foreach (var id in identifierNames)
+        {
+            if (id.Parent is InvocationExpressionSyntax invocation && invocation.Expression == id)
+            {
+                continue;
+            }
+            identifiers.Add(id.Identifier.ValueText);
+        }
+
+        return identifiers;
     }
 }

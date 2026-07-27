@@ -40,7 +40,6 @@ Default warning levels are set, but you can adjust them to fit your development 
 | **STR002** | Safety improvement by replacing with nameof | Use type-safe 'nameof({0})' instead of the magic string '{0}'. |
 | **LINQ001** | Performance improvement by integrating LINQ evaluation | Integrate the Where().{0}() chain into a single '{0}(predicate)' for optimization. |
 | **LINQ002** | Removal of unnecessary collection materialization | '{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation. |
-| **LINQ003** | Prevention of re-evaluation by finalizing collection | '{0}' is enumerated multiple times. Finalize the result to avoid redundant calculations and improve performance. |
 | **COLL001** | Memory reduction by specifying initial List capacity | Specify an initial capacity in the List constructor as the loop count is predictable. |
 | **COMM001** | Missing function header | Function header is missing. Please add the documentation comments. |
 | **COMM002** | Function header parameter mismatch | Function header parameters do not match the method definition. Please synchronize '{0}'. |
@@ -97,7 +96,6 @@ NULLチェックの型安全性欠如や、非効率なLINQ等を自動検知し
 | **STR002** | nameofへの置き換えによる安全性向上 | 文字列リテラル '{0}' ではなく、型安全な 'nameof({0})' を使用してください。 |
 | **LINQ001** | LINQ評価の統合によるパフォーマンス向上 | Where().{0}() のチェーンを、単一の '{0}(predicate)' に統合して最適化してください。 |
 | **LINQ002** | 不要なコレクションの実体化の削除 | '{0}' は列挙後に再利用されていません。メモリ確保を回避するため、呼び出しを削除してください。 |
-| **LINQ003** | コレクションの確定による再評価の防止 | '{0}' は複数回列挙されています。結果を確定させることで、計算の重複を排除してください。 |
 | **COLL001** | List初期キャパシティ指定によるメモリ削減 | ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。 |
 | **COMM001** | 関数ヘッダーの欠落 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
 | **COMM002** | 関数ヘッダーのパラメータ不一致 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |

@@ -25,8 +25,7 @@ public class ListCapacity : CommonAnalyzer
         var objectCreation = (ObjectCreationExpressionSyntax)context.Node;
 
         // 1. 生成されている型が「List<T>」であるかを検証
-        var typeSymbol = context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken).Type as INamedTypeSymbol;
-        if (typeSymbol is null || typeSymbol.OriginalDefinition.ToDisplayString() != "System.Collections.Generic.List<T>") return;
+        if (context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken).Type is not INamedTypeSymbol typeSymbol || typeSymbol.OriginalDefinition.ToDisplayString() != "System.Collections.Generic.List<T>") return;
 
         // 2. すでに初期サイズが指定されている、あるいはコレクション初期化子がある場合はスルー
         if ((objectCreation.ArgumentList != null && objectCreation.ArgumentList.Arguments.Count > 0) || objectCreation.Initializer != null) return;
@@ -36,7 +35,6 @@ public class ListCapacity : CommonAnalyzer
         if (limitExpression is null) return;
 
         // 4. 上限値が「変数」であり、かつリスト生成よりも「後」に宣言されている場合は警告対象外とする
-        // （リテラル定数の場合はシンボルが取れないため安全として通過する）
         if (IsVariableDeclaredAfter(limitExpression, objectCreation, context.SemanticModel, context.CancellationToken))
         {
             return;

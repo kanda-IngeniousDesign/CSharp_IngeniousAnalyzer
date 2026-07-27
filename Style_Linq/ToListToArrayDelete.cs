@@ -31,6 +31,7 @@ public class ToListToArrayDelete : CommonAnalyzer
             return;
         }
 
+        // foreach直接、または安全性が証明できる変数経由のどちらかであれば警告する
         bool isRedundant = IsDirectForEachUsage(invocation) || 
                            IsRedundantVariableAssignment(invocation, model, context.CancellationToken);
 
@@ -42,12 +43,18 @@ public class ToListToArrayDelete : CommonAnalyzer
     }
 
     /// <summary>
-    /// 呼び出しが ToList または ToArray であるかを判定します
+    /// 呼び出しが System.Linq.Enumerable の ToList または ToArray であるかを厳密に判定します
     /// </summary>
     private static bool IsMaterializationMethod(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken cancellationToken)
     {
         var methodSymbol = model.GetSymbolInfo(invocation, cancellationToken).Symbol as IMethodSymbol;
-        if (methodSymbol == null || methodSymbol.ContainingType.ToDisplayString() != "System.Linq.Enumerable")
+        if (methodSymbol == null)
+        {
+            return false;
+        }
+
+        var containingType = methodSymbol.ContainingType;
+        if (containingType == null || containingType.ToDisplayString() != "System.Linq.Enumerable")
         {
             return false;
         }
@@ -65,40 +72,51 @@ public class ToListToArrayDelete : CommonAnalyzer
     }
 
     /// <summary>
-    /// 変数宣言または再代入を経由して、不要な実体化が行われているかを検証します
+    /// 変数宣言を経由している場合でも、後続で安全に書き換えられず foreach で1回だけ使われるケースを検証します
     /// </summary>
-    private static bool IsRedundantVariableAssignment(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken cancellationToken)
+    private static bool IsRedundantVariableAssignment(
+        InvocationExpressionSyntax invocation, 
+        SemanticModel model, 
+        CancellationToken cancellationToken)
     {
-        var declaratorOrAssignment = FindDeclaratorOrAssignment(invocation);
-        if (declaratorOrAssignment == null)
+        var declarator = FindVariableDeclarator(invocation);
+        if (declarator == null)
         {
             return false;
         }
 
-        if (!TryGetTargetSymbolAndType(declaratorOrAssignment, model, cancellationToken, out var targetSymbol, out var targetVariableType, out var isVar))
+        if (!TryGetTargetSymbolAndType(declarator, model, cancellationToken, out var targetSymbol, out var targetVariableType, out var isVar))
         {
             return false;
         }
 
+        // 型の暗黙的変換が成立するか確認（varの場合は型一致なのでOK）
         if (!isVar && !CanBeAssignedWithoutToList(invocation, targetVariableType!, model, cancellationToken))
         {
             return false;
         }
 
-        return HasSingleForEachReference(invocation, targetSymbol!, model, cancellationToken);
+        // 定義された変数が、後続で再代入されず、かつ foreach の式として1回だけ参照されているか
+        return HasSingleSafeForEachReference(invocation, targetSymbol!, model, cancellationToken);
     }
 
     /// <summary>
-    /// 呼び出しの祖先から変数宣言または代入式を特定します
+    /// 呼び出しの祖先から変数宣言子（VariableDeclaratorSyntax）を特定します
+    /// （再代入への代入は誤検知リスクが高いため、初回の変数宣言のみに絞る）
     /// </summary>
-    private static SyntaxNode? FindDeclaratorOrAssignment(InvocationExpressionSyntax invocation)
+    private static VariableDeclaratorSyntax? FindVariableDeclarator(InvocationExpressionSyntax invocation)
     {
         SyntaxNode? current = invocation.Parent;
         while (current != null)
         {
-            if (current is VariableDeclaratorSyntax || current is AssignmentExpressionSyntax)
+            if (current is VariableDeclaratorSyntax declarator)
             {
-                return current;
+                return declarator;
+            }
+            // 文の境界を越えたら探索を打ち切る
+            if (current is StatementSyntax || current is MemberDeclarationSyntax)
+            {
+                break;
             }
             current = current.Parent;
         }
@@ -106,37 +124,32 @@ public class ToListToArrayDelete : CommonAnalyzer
     }
 
     /// <summary>
-    /// 対象シンボルと変数の型、およびvar宣言であるかを取得します
+    /// 対象シンボルと変数の型、var宣言であるかを取得します
     /// </summary>
     private static bool TryGetTargetSymbolAndType(
-        SyntaxNode declaratorOrAssignment, 
+        VariableDeclaratorSyntax declarator, 
         SemanticModel model, 
         CancellationToken cancellationToken, 
         out ISymbol? symbol, 
         out ITypeSymbol? type,
         out bool isVar)
     {
-        symbol = null;
+        symbol = model.GetDeclaredSymbol(declarator, cancellationToken);
         type = null;
         isVar = false;
 
-        if (declaratorOrAssignment is VariableDeclaratorSyntax varDecl)
+        if (symbol == null)
         {
-            symbol = model.GetDeclaredSymbol(varDecl, cancellationToken);
-            if (varDecl.Parent is VariableDeclarationSyntax varDeclSyntax)
-            {
-                // var 宣言であるかを判定
-                isVar = varDeclSyntax.Type.IsVar;
-                type = model.GetTypeInfo(varDeclSyntax.Type, cancellationToken).Type;
-            }
-        }
-        else if (declaratorOrAssignment is AssignmentExpressionSyntax assignExpr && assignExpr.Left is IdentifierNameSyntax leftId)
-        {
-            symbol = model.GetSymbolInfo(leftId, cancellationToken).Symbol;
-            type = model.GetTypeInfo(assignExpr.Left, cancellationToken).Type;
+            return false;
         }
 
-        return symbol != null;
+        if (declarator.Parent is VariableDeclarationSyntax varDeclSyntax)
+        {
+            isVar = varDeclSyntax.Type.IsVar;
+            type = model.GetTypeInfo(varDeclSyntax.Type, cancellationToken).Type;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -159,9 +172,9 @@ public class ToListToArrayDelete : CommonAnalyzer
     }
 
     /// <summary>
-    /// 変数が定義以降に非代入参照として foreach で1回だけ使用されているかを検証します
+    /// 変数が定義以降に再代入されず、非代入参照として foreach で1回だけ安全に使用されているかを検証します
     /// </summary>
-    private static bool HasSingleForEachReference(
+    private static bool HasSingleSafeForEachReference(
         InvocationExpressionSyntax invocation, 
         ISymbol targetSymbol, 
         SemanticModel model, 
@@ -180,9 +193,17 @@ public class ToListToArrayDelete : CommonAnalyzer
             .Where(r => r.SpanStart > invocationSpanStart)
             .ToList();
 
+        // 代入の左辺（再代入）が含まれている場合は安全とは言えないため除外
+        var hasReassignment = subsequentRefs.Any(r => r.Parent is AssignmentExpressionSyntax assign && assign.Left == r);
+        if (hasReassignment)
+        {
+            return false;
+        }
+
         var nonAssignmentRefs = subsequentRefs.Where(r => 
             !(r.Parent is AssignmentExpressionSyntax assign && assign.Left == r)).ToList();
 
+        // 参照がちょうど1回であり、それが foreach の式であれば安全
         if (nonAssignmentRefs.Count == 1)
         {
             var onlyRef = nonAssignmentRefs[0];
