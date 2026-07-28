@@ -11,6 +11,7 @@
     <RepositoryType>git</RepositoryType>
 
     <TargetFramework>netstandard2.0</TargetFramework>
+    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
     <Version>2.2.6</Version>
