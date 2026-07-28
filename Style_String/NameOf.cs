@@ -30,32 +30,44 @@ public class Nameof : CommonAnalyzer
 
         SyntaxNode targetNode = context.Node;
 
-        // 代入の左辺（代入先）になっている場合は除外
-        if (IsAssignmentTarget(targetNode)) return;
-
-        // 所属する文を取得
+        // 所属する文を取得する
         var statement = targetNode.Ancestors().OfType<StatementSyntax>().FirstOrDefault();
         if (statement is null) return;
 
-        // 代入式が含まれる文全体の場合は除外
-        if (IsInAssignmentStatement(statement)) return;
+        // 代入行全体を完全に除外する
+        if (statement is ExpressionStatementSyntax exprStmt && exprStmt.Expression is AssignmentExpressionSyntax)
+        {
+            return;
+        }
+
+        // 代入の左辺（代入先）である場合は除外する
+        if (IsAssignmentTarget(targetNode)) return;
+
+        // 変数宣言の初期化子である場合は除外する
+        if (IsVariableDeclarationInitializer(targetNode)) return;
+
+        // 制御文の条件式部分に含まれている場合は除外する
+        if (IsInControlStatementCondition(targetNode)) return;
 
         string text = ExtractNodeText(targetNode);
         if (string.IsNullOrEmpty(text)) return;
 
-        // 空白および特定の囲み記号や区切り文字を除外してトリム
+        // 空白および特定の囲み記号や区切り文字を除外してトリムする
         string trimmedText = TrimSurroundingSymbols(text);
         if (string.IsNullOrWhiteSpace(trimmedText)) return;
 
-        // トリムした文字列全体が有効な識別子ではない場合は対象外
+        // トリムした文字列全体が有効な識別子ではない場合は対象外とする
         if (!SyntaxFacts.IsValidIdentifier(trimmedText)) return;
 
-        // 文に含まれる変数名・識別子を取得
-        var variableNames = GetValidVariableNames(statement);
-        if (variableNames.Count == 0) return;
+        // スコープ内の有効なローカル変数・パラメータ名を取得する
+        var localVariableNames = GetLocalVariableNames(statement, context.SemanticModel);
+        if (localVariableNames.Count == 0) return;
 
-        // 変数として存在しない場合は対象外
-        if (!variableNames.Contains(trimmedText)) return;
+        // ローカル変数として存在しない場合は対象外とする
+        if (!localVariableNames.Contains(trimmedText)) return;
+
+        // 同じ文の内部に、その変数名（IdentifierName）が実際に使用されている場合のみ許可する
+        if (!IsVariableUsedInStatement(statement, trimmedText)) return;
 
         var diagnostic = Diagnostic.Create(Rule, targetNode.GetLocation(), trimmedText);
         context.ReportDiagnostic(diagnostic);
@@ -77,11 +89,6 @@ public class Nameof : CommonAnalyzer
         return text.Trim(charsToTrim);
     }
 
-    private static bool IsInAssignmentStatement(StatementSyntax statement)
-    {
-        return statement.DescendantNodes().OfType<AssignmentExpressionSyntax>().Any();
-    }
-
     private static bool IsAssignmentTarget(SyntaxNode node)
     {
         var assignment = node.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
@@ -95,26 +102,85 @@ public class Nameof : CommonAnalyzer
         return false;
     }
 
-    private static HashSet<string> GetValidVariableNames(StatementSyntax statement)
+    private static bool IsVariableDeclarationInitializer(SyntaxNode node)
+    {
+        var declarator = node.Ancestors().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
+        if (declarator?.Initializer is not null)
+        {
+            if (declarator.Initializer.Span.Contains(node.Span) || declarator.Initializer.FullSpan.Contains(node.FullSpan))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static bool IsInControlStatementCondition(SyntaxNode node)
+    {
+        foreach (var ancestor in node.Ancestors())
+        {
+            switch (ancestor)
+            {
+                case IfStatementSyntax ifStmt:
+                    if (ifStmt.Condition.Span.Contains(node.Span)) return true;
+                    break;
+                case WhileStatementSyntax whileStmt:
+                    if (whileStmt.Condition.Span.Contains(node.Span)) return true;
+                    break;
+                case DoStatementSyntax doStmt:
+                    if (doStmt.Condition.Span.Contains(node.Span)) return true;
+                    break;
+                case ForStatementSyntax forStmt:
+                    if (forStmt.Condition?.Span.Contains(node.Span) == true) return true;
+                    break;
+                case SwitchStatementSyntax switchStmt:
+                    if (switchStmt.Expression.Span.Contains(node.Span)) return true;
+                    break;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// 同じ文の内部に、対象の変数名と一致する識別子（IdentifierName）が実変数として存在するかを検証する
+    /// </summary>
+    private static bool IsVariableUsedInStatement(StatementSyntax statement, string variableName)
+    {
+        var identifiers = statement.DescendantNodes().OfType<IdentifierNameSyntax>();
+        foreach (var id in identifiers)
+        {
+            if (id.Identifier.ValueText == variableName)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static HashSet<string> GetLocalVariableNames(StatementSyntax statement, SemanticModel model)
     {
         var identifiers = new HashSet<string>();
 
-        // 変数宣言やパラメータなどの変数名を取得
-        var variableDeclarators = statement.DescendantNodes().OfType<VariableDeclaratorSyntax>();
-        foreach (var declarator in variableDeclarators)
+        var methodSymbol = model.GetEnclosingSymbol(statement.SpanStart) as IMethodSymbol;
+        if (methodSymbol != null)
         {
-            identifiers.Add(declarator.Identifier.ValueText);
+            foreach (var param in methodSymbol.Parameters)
+            {
+                identifiers.Add(param.Name);
+            }
         }
 
-        // 式の中で使われている通常の識別子を取得（メソッド名等を除外）
-        var identifierNames = statement.DescendantNodes().OfType<IdentifierNameSyntax>();
-        foreach (var id in identifierNames)
+        var methodBody = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
+        if (methodBody != null)
         {
-            if (id.Parent is InvocationExpressionSyntax invocation && invocation.Expression == id)
+            var variableDeclarators = methodBody.DescendantNodes().OfType<VariableDeclaratorSyntax>();
+            foreach (var declarator in variableDeclarators)
             {
-                continue;
+                if (model.GetDeclaredSymbol(declarator) is ILocalSymbol)
+                {
+                    identifiers.Add(declarator.Identifier.ValueText);
+                }
             }
-            identifiers.Add(id.Identifier.ValueText);
         }
 
         return identifiers;

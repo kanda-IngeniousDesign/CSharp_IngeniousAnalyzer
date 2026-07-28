@@ -42,9 +42,9 @@ public class MethodComplexityFix : CodeFixProvider
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root is null || method.Body is null) return document;
 
-        // タブ、コメント、改行をまとめたトリビアリストを作成
+        // 半角スペース8つ、コメント、改行をまとめたトリビアリストを作成
         var ignoreTriviaList = SyntaxFactory.TriviaList(
-            SyntaxFactory.Whitespace("\t\t"),
+            SyntaxFactory.Whitespace("        "),
             SyntaxFactory.Comment("// Ignore CPX001"),
             SyntaxFactory.EndOfLine("\r\n")
         );

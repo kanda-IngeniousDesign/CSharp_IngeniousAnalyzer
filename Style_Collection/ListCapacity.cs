@@ -2,6 +2,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System.Linq;
+using System.Threading;
 using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_Collection;
@@ -24,36 +26,37 @@ public class ListCapacity : CommonAnalyzer
         if (IsGeneratedFile(context)) return;
         var objectCreation = (ObjectCreationExpressionSyntax)context.Node;
 
-        // 1. 生成されている型が「List<T>」であるかを検証
+        // 1. 生成されている型が「List<T>」であるかを検証する
         if (context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken).Type is not INamedTypeSymbol typeSymbol || typeSymbol.OriginalDefinition.ToDisplayString() != "System.Collections.Generic.List<T>") return;
 
-        // 2. すでに初期サイズが指定されている、あるいはコレクション初期化子がある場合はスルー
+        // 2. すでに初期サイズが指定されている、あるいはコレクション初期化子がある場合はスルーする
         if ((objectCreation.ArgumentList != null && objectCreation.ArgumentList.Arguments.Count > 0) || objectCreation.Initializer != null) return;
 
-        // 3. ループ上限式を安全逆引き（取れない場合はスルー）
+        // 3. ループ上限式を安全逆引きする（取れない場合はスルーする）
         var limitExpression = GetLimitExpressionOrNull(objectCreation, context.SemanticModel, context.CancellationToken);
         if (limitExpression is null) return;
 
-        // 4. 上限値が「変数」であり、かつリスト生成よりも「後」に宣言されている場合は警告対象外とする
+        // 4. 上限値が「ローカル変数」であり、かつリスト生成よりも「後」に宣言されている場合は警告対象外とする
         if (IsVariableDeclaredAfter(limitExpression, objectCreation, context.SemanticModel, context.CancellationToken))
         {
             return;
         }
 
-        // 安全かつ確実と確定したケースのみ警告を通知
+        // 安全かつ確実と確定したケース（ローカル変数または定数）のみ警告を通知する
         var diagnostic = Diagnostic.Create(Rule, objectCreation.GetLocation());
         context.ReportDiagnostic(diagnostic);
     }
 
     /// <summary>
-    /// ループ上限値が変数であり、かつリスト生成よりも後で宣言されているかを判定する補助メソッド
+    /// ループ上限値がローカル変数であり、かつリスト生成よりも後で宣言されているかを判定する
     /// </summary>
     private static bool IsVariableDeclaredAfter(ExpressionSyntax limitExpr, ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
         var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
         var symbol = symbolInfo.Symbol;
 
-        if (symbol != null)
+        // ローカル変数またはパラメータの場合のみ宣言位置を検証する
+        if (symbol is ILocalSymbol)
         {
             var syntaxRef = symbol.DeclaringSyntaxReferences.FirstOrDefault();
             if (syntaxRef != null)
@@ -63,12 +66,12 @@ public class ListCapacity : CommonAnalyzer
             }
         }
 
-        // リテラルなどの場合は安全とみなす
+        // プロパティアクセスや複雑な式、フィールドなどは追跡困難なため安全側に倒して false（除外対象外＝ここでは警告しない条件には該当させないが、GetLimitExpressionOrNullで既に弾かれている）
         return false;
     }
 
     /// <summary>
-    /// ループ上限を逆引きする安全検証ロジック
+    /// ループ上限を逆引きする安全検証ロジック（ローカル変数・定数のみ許可）
     /// </summary>
     private static ExpressionSyntax? GetLimitExpressionOrNull(ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
@@ -83,8 +86,6 @@ public class ListCapacity : CommonAnalyzer
 
         ForStatementSyntax? targetForLoop = null;
 
-        // メソッド内のすべての for ループを対象にするが、
-        // 「このリストの .Add() を実際に呼び出しているループ」を厳密に探す
         var allForLoops = methodBlock.DescendantNodes().OfType<ForStatementSyntax>();
 
         foreach (var forLoop in allForLoops)
@@ -108,20 +109,28 @@ public class ListCapacity : CommonAnalyzer
 
         if (targetForLoop is null) return null;
 
-        // ターゲットとなった for ループのさらに内側に、別の for ループが存在する場合は、
-        // どちらのループ上限を指しているか曖昧になるためスルーする
         if (targetForLoop.Statement.DescendantNodes().OfType<ForStatementSyntax>().Any())
         {
             return null;
         }
 
-        // 未満（LessThan）関係のみを安全に対象にする
         if (targetForLoop.Condition is BinaryExpressionSyntax binaryExpression &&
             binaryExpression.OperatorToken.IsKind(SyntaxKind.LessThanToken))
         {
             var limitExpr = binaryExpression.Right;
 
-            // 上限値が変数であり、かつリスト生成よりも「後」に宣言されている場合は除外する
+            // 上限の右辺が「ローカル変数（ILocalSymbol）」または「定数・リテラル」であるものに厳しく限定する
+            var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
+            if (symbolInfo.Symbol != null && symbolInfo.Symbol is not ILocalSymbol && symbolInfo.Symbol is not IFieldSymbol)
+            {
+                return null;
+            }
+            // プロパティアクセス（MemberAccessExpressionSyntax）などは完全に除外する
+            if (limitExpr is MemberAccessExpressionSyntax)
+            {
+                return null;
+            }
+
             if (IsVariableDeclaredAfter(limitExpr, objectCreation, semanticModel, cancellationToken))
             {
                 return null;

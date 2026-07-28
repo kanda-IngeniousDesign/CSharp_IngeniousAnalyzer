@@ -1,5 +1,8 @@
 using System.Collections.Immutable;
 using System.Composition;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
@@ -46,85 +49,189 @@ public class NameofFix : CodeFixProvider
         var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
         if (root is null) return document;
 
-        if (targetNode is LiteralExpressionSyntax literal)
+        var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        var statement = targetNode.Ancestors().OfType<StatementSyntax>().FirstOrDefault();
+        var validVariableNames = GetLocalVariableNames(statement, semanticModel);
+
+        return targetNode switch
         {
-            var variableName = literal.Token.ValueText;
-            var nameofIdentifier = SyntaxFactory.IdentifierName("nameof");
-            var argument = SyntaxFactory.Argument(SyntaxFactory.IdentifierName(variableName));
-            var argumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList([argument]));
-            var nameofExpression = SyntaxFactory.InvocationExpression(nameofIdentifier, argumentList);
-            var nameofWithTrivia = nameofExpression.WithTriviaFrom(targetNode);
+            LiteralExpressionSyntax literal => ReplaceLiteralWithNameof(root, document, literal, validVariableNames),
+            InterpolatedStringTextSyntax textSyntax => ReplaceInterpolatedTextWithNameof(root, document, textSyntax, validVariableNames),
+            _ => document
+        };
+    }
 
-            var newRoot = root.ReplaceNode(targetNode, nameofWithTrivia);
-            return document.WithSyntaxRoot(newRoot);
-        }
-        else if (targetNode is InterpolatedStringTextSyntax textSyntax)
+    /// <summary>
+    /// 通常の文字列リテラルを nameof 表現に置き換える
+    /// </summary>
+    private static Document ReplaceLiteralWithNameof(SyntaxNode syntaxRoot, Document document, LiteralExpressionSyntax literal, HashSet<string> validVariableNames)
+    {
+        var text = literal.Token.ValueText;
+        var variableName = ExtractMatchingVariableName(text, validVariableNames);
+        if (string.IsNullOrEmpty(variableName)) return document;
+
+        if (text.Trim() == variableName)
         {
-            var text = textSyntax.TextToken.ValueText;
-            string variableName = string.Empty;
-            var words = text.Split([' ', ':', '=', ',', ';', '\t', '\r', '\n'], System.StringSplitOptions.RemoveEmptyEntries);
-            foreach (var word in words)
-            {
-                if (SyntaxFacts.IsValidIdentifier(word))
-                {
-                    variableName = word;
-                    break;
-                }
-            }
-
-            if (string.IsNullOrEmpty(variableName)) return document;
-
-            var nameofIdentifier = SyntaxFactory.IdentifierName("nameof");
-            var argument = SyntaxFactory.Argument(SyntaxFactory.IdentifierName(variableName));
-            var argumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList([argument]));
-            var nameofExpression = SyntaxFactory.InvocationExpression(nameofIdentifier, argumentList);
-            var interpolation = SyntaxFactory.Interpolation(nameofExpression);
-
-            var interpolatedString = textSyntax.Ancestors().OfType<InterpolatedStringExpressionSyntax>().FirstOrDefault();
-            if (interpolatedString is null) return document;
-
-            var parts = text.Split(new[] { variableName }, 2, System.StringSplitOptions.None);
-            
-            var newContents = new SyntaxList<InterpolatedStringContentSyntax>();
-            foreach (var content in interpolatedString.Contents)
-            {
-                if (content == textSyntax)
-                {
-                    if (!string.IsNullOrEmpty(parts[0]))
-                    {
-                        var token0 = SyntaxFactory.Token(
-                            textSyntax.TextToken.LeadingTrivia,
-                            SyntaxKind.InterpolatedStringTextToken,
-                            parts[0],
-                            parts[0],
-                            textSyntax.TextToken.TrailingTrivia);
-                        newContents = newContents.Add(SyntaxFactory.InterpolatedStringText(token0));
-                    }
-                    
-                    newContents = newContents.Add(interpolation);
-
-                    if (parts.Length > 1 && !string.IsNullOrEmpty(parts[1]))
-                    {
-                        var token1 = SyntaxFactory.Token(
-                            textSyntax.TextToken.LeadingTrivia,
-                            SyntaxKind.InterpolatedStringTextToken,
-                            parts[1],
-                            parts[1],
-                            textSyntax.TextToken.TrailingTrivia);
-                        newContents = newContents.Add(SyntaxFactory.InterpolatedStringText(token1));
-                    }
-                }
-                else
-                {
-                    newContents = newContents.Add(content);
-                }
-            }
-
-            var newInterpolatedString = interpolatedString.WithContents(newContents);
-            var newRoot = root.ReplaceNode(interpolatedString, newInterpolatedString);
-            return document.WithSyntaxRoot(newRoot);
+            var nameofExpression = CreateNameofExpression(variableName).WithTriviaFrom(literal);
+            var replacedRoot = syntaxRoot.ReplaceNode(literal, nameofExpression);
+            return document.WithSyntaxRoot(replacedRoot);
         }
 
-        return document;
+        var parts = text.Split([variableName], 2, System.StringSplitOptions.None);
+        if (parts.Length < 2) return document;
+
+        var interpolation = SyntaxFactory.Interpolation(CreateNameofExpression(variableName));
+        
+        var contents = new SyntaxList<InterpolatedStringContentSyntax>();
+        AddLiteralTextTokenIfNotEmpty(ref contents, parts[0], literal);
+        contents = contents.Add(interpolation);
+        AddLiteralTextTokenIfNotEmpty(ref contents, parts[1], literal);
+
+        var interpolatedString = SyntaxFactory.InterpolatedStringExpression(
+            SyntaxFactory.Token(SyntaxKind.InterpolatedStringStartToken),
+            contents,
+            SyntaxFactory.Token(SyntaxKind.InterpolatedStringEndToken))
+            .WithTriviaFrom(literal);
+
+        var newRoot = syntaxRoot.ReplaceNode(literal, interpolatedString);
+        return document.WithSyntaxRoot(newRoot);
+    }
+
+    /// <summary>
+    /// 補間文字列内のテキスト部分を nameof 表現に置き換える
+    /// </summary>
+    private static Document ReplaceInterpolatedTextWithNameof(SyntaxNode syntaxRoot, Document document, InterpolatedStringTextSyntax textSyntax, HashSet<string> validVariableNames)
+    {
+        var text = textSyntax.TextToken.ValueText;
+        var variableName = ExtractMatchingVariableName(text, validVariableNames);
+        if (string.IsNullOrEmpty(variableName)) return document;
+
+        var interpolatedString = textSyntax.Ancestors().OfType<InterpolatedStringExpressionSyntax>().FirstOrDefault();
+        if (interpolatedString is null) return document;
+
+        var interpolation = SyntaxFactory.Interpolation(CreateNameofExpression(variableName));
+        var newContents = BuildNewInterpolatedContents(interpolatedString.Contents, textSyntax, text, variableName, interpolation);
+
+        var newInterpolatedString = interpolatedString.WithContents(newContents);
+        var replacedRoot = syntaxRoot.ReplaceNode(interpolatedString, newInterpolatedString);
+        return document.WithSyntaxRoot(replacedRoot);
+    }
+
+    /// <summary>
+    /// nameof(variableName) の式ノードを生成する
+    /// </summary>
+    private static InvocationExpressionSyntax CreateNameofExpression(string variableName)
+    {
+        var nameofIdentifier = SyntaxFactory.IdentifierName("nameof");
+        var argument = SyntaxFactory.Argument(SyntaxFactory.IdentifierName(variableName));
+        var argumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList([argument]));
+        return SyntaxFactory.InvocationExpression(nameofIdentifier, argumentList);
+    }
+
+    /// <summary>
+    /// 補間文字列のコンテンツリストを再構築し、対象テキスト部分を interpolation に置き換える
+    /// </summary>
+    private static SyntaxList<InterpolatedStringContentSyntax> BuildNewInterpolatedContents(
+        SyntaxList<InterpolatedStringContentSyntax> contents,
+        InterpolatedStringTextSyntax targetTextSyntax,
+        string text,
+        string variableName,
+        InterpolationSyntax interpolation)
+    {
+        var parts = text.Split([variableName], 2, System.StringSplitOptions.None);
+        var newContents = new SyntaxList<InterpolatedStringContentSyntax>();
+
+        foreach (var content in contents)
+        {
+            if (content == targetTextSyntax)
+            {
+                AddInterpolatedTextTokenIfNotEmpty(ref newContents, parts[0], targetTextSyntax);
+                newContents = newContents.Add(interpolation);
+                if (parts.Length > 1)
+                {
+                    AddInterpolatedTextTokenIfNotEmpty(ref newContents, parts[1], targetTextSyntax);
+                }
+            }
+            else
+            {
+                newContents = newContents.Add(content);
+            }
+        }
+
+        return newContents;
+    }
+
+    private static void AddInterpolatedTextTokenIfNotEmpty(ref SyntaxList<InterpolatedStringContentSyntax> contents, string textPart, InterpolatedStringTextSyntax templateSyntax)
+    {
+        if (string.IsNullOrEmpty(textPart)) return;
+
+        var token = SyntaxFactory.Token(
+            templateSyntax.TextToken.LeadingTrivia,
+            SyntaxKind.InterpolatedStringTextToken,
+            textPart,
+            textPart,
+            templateSyntax.TextToken.TrailingTrivia);
+
+        contents = contents.Add(SyntaxFactory.InterpolatedStringText(token));
+    }
+
+    private static void AddLiteralTextTokenIfNotEmpty(ref SyntaxList<InterpolatedStringContentSyntax> contents, string textPart, LiteralExpressionSyntax templateLiteral)
+    {
+        if (string.IsNullOrEmpty(textPart)) return;
+
+        var token = SyntaxFactory.Token(
+            templateLiteral.Token.LeadingTrivia,
+            SyntaxKind.InterpolatedStringTextToken,
+            textPart,
+            textPart,
+            templateLiteral.Token.TrailingTrivia);
+
+        contents = contents.Add(SyntaxFactory.InterpolatedStringText(token));
+    }
+
+    private static string ExtractMatchingVariableName(string text, HashSet<string> validVariableNames)
+    {
+        char[] charsToTrim = [' ', '\t', '\r', '\n', '[', ']', '(', ')', '{', '}', '"', '\'', '：', ':', ';', ',', '.', '<', '>', '/', '\\', '|', '!', '@', '#', '$', '%', '^', '&', '*', '-', '+', '=', '~', '`'];
+        
+        var words = text.Split([' ', ':', '=', ',', ';', '\t', '\r', '\n', '-', '>', '<', '+', '*'], System.StringSplitOptions.RemoveEmptyEntries);
+        foreach (var word in words)
+        {
+            var trimmed = word.Trim(charsToTrim);
+            if (validVariableNames.Contains(trimmed))
+            {
+                return trimmed;
+            }
+        }
+        return string.Empty;
+    }
+
+    private static HashSet<string> GetLocalVariableNames(StatementSyntax statement, SemanticModel model)
+    {
+        var identifiers = new HashSet<string>();
+        if (statement is null || model is null) return identifiers;
+
+        var methodSymbol = model.GetEnclosingSymbol(statement.SpanStart) as IMethodSymbol;
+        if (methodSymbol != null)
+        {
+            foreach (var param in methodSymbol.Parameters)
+            {
+                identifiers.Add(param.Name);
+            }
+        }
+
+        var methodBody = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
+        if (methodBody != null)
+        {
+            var variableDeclarators = methodBody.DescendantNodes().OfType<VariableDeclaratorSyntax>();
+            foreach (var declarator in variableDeclarators)
+            {
+                if (model.GetDeclaredSymbol(declarator) is ILocalSymbol)
+                {
+                    identifiers.Add(declarator.Identifier.ValueText);
+                }
+            }
+        }
+
+        return identifiers;
     }
 }
