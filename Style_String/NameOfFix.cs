@@ -28,7 +28,7 @@ public class NameofFix : CodeFixProvider
         var diagnostic = context.Diagnostics.First();
         var span = diagnostic.Location.SourceSpan;
 
-        SyntaxNode targetNode = root.FindNodeAtSpan<LiteralExpressionSyntax>(span);
+        SyntaxNode? targetNode = root.FindNodeAtSpan<LiteralExpressionSyntax>(span);
         if (targetNode is null)
         {
             targetNode = root.FindNodeAtSpan<InterpolatedStringTextSyntax>(span);
@@ -50,6 +50,8 @@ public class NameofFix : CodeFixProvider
         if (root is null) return document;
 
         var semanticModel = await document.GetSemanticModelAsync(cancellationToken).ConfigureAwait(false);
+        if (semanticModel is null) return document;
+
         var statement = targetNode.Ancestors().OfType<StatementSyntax>().FirstOrDefault();
         var validVariableNames = GetLocalVariableNames(statement, semanticModel);
 

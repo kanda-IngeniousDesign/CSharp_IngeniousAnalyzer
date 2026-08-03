@@ -1,4 +1,4 @@
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -23,6 +23,7 @@ public class ToListToArrayDelete : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
         var invocation = (InvocationExpressionSyntax)context.Node;
         var model = context.SemanticModel;
 
@@ -102,7 +103,6 @@ public class ToListToArrayDelete : CommonAnalyzer
 
     /// <summary>
     /// 呼び出しの祖先から変数宣言子（VariableDeclaratorSyntax）を特定します
-    /// （再代入への代入は誤検知リスクが高いため、初回の変数宣言のみに絞る）
     /// </summary>
     private static VariableDeclaratorSyntax? FindVariableDeclarator(InvocationExpressionSyntax invocation)
     {
@@ -113,7 +113,6 @@ public class ToListToArrayDelete : CommonAnalyzer
             {
                 return declarator;
             }
-            // 文の境界を越えたら探索を打ち切る
             if (current is StatementSyntax || current is MemberDeclarationSyntax)
             {
                 break;
@@ -173,6 +172,7 @@ public class ToListToArrayDelete : CommonAnalyzer
 
     /// <summary>
     /// 変数が定義以降に再代入されず、非代入参照として foreach で1回だけ安全に使用されているかを検証します
+    /// （LINQ や List などの無駄なアロケーションを排除）
     /// </summary>
     private static bool HasSingleSafeForEachReference(
         InvocationExpressionSyntax invocation, 
@@ -180,7 +180,29 @@ public class ToListToArrayDelete : CommonAnalyzer
         SemanticModel model, 
         CancellationToken cancellationToken)
     {
-        var methodBody = invocation.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
+        // 祖先から MethodDeclarationSyntax または ParenthesizedLambdaExpressionSyntax などのボディスコープを特定
+        SyntaxNode? methodBody = null;
+        var current = invocation.Parent;
+        while (current != null)
+        {
+            if (current is MethodDeclarationSyntax methodDecl)
+            {
+                methodBody = methodDecl.Body;
+                break;
+            }
+            if (current is AccessorDeclarationSyntax accessorDecl)
+            {
+                methodBody = accessorDecl.Body;
+                break;
+            }
+            if (current is LocalFunctionStatementSyntax localFunc)
+            {
+                methodBody = localFunc.Body;
+                break;
+            }
+            current = current.Parent;
+        }
+
         if (methodBody == null)
         {
             return false;
@@ -188,29 +210,43 @@ public class ToListToArrayDelete : CommonAnalyzer
 
         var invocationSpanStart = invocation.SpanStart;
 
-        var subsequentRefs = methodBody.DescendantNodes().OfType<IdentifierNameSyntax>()
-            .Where(id => SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(id, cancellationToken).Symbol, targetSymbol))
-            .Where(r => r.SpanStart > invocationSpanStart)
-            .ToList();
+        // LINQ の Where / ToList などを排除し、foreach 参照のカウンティングと再代入チェックを単一のループで効率的に実行
+        int nonAssignmentRefCount = 0;
+        ForEachStatementSyntax? foundForEach = null;
 
-        // 代入の左辺（再代入）が含まれている場合は安全とは言えないため除外
-        var hasReassignment = subsequentRefs.Any(r => r.Parent is AssignmentExpressionSyntax assign && assign.Left == r);
-        if (hasReassignment)
+        foreach (var node in methodBody.DescendantNodes())
         {
-            return false;
+            if (node is IdentifierNameSyntax id && id.SpanStart > invocationSpanStart)
+            {
+                if (SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(id, cancellationToken).Symbol, targetSymbol))
+                {
+                    // 再代入チェック（代入式の左辺である場合）
+                    if (id.Parent is AssignmentExpressionSyntax assign && assign.Left == id)
+                    {
+                        return false; // 再代入されている場合は即座に安全ではないと判定
+                    }
+
+                    // 非代入参照のカウント
+                    nonAssignmentRefCount++;
+                    if (nonAssignmentRefCount > 1)
+                    {
+                        return false; // 2回以上参照されている場合はNG
+                    }
+
+                    // 参照元が foreach の式であるか確認
+                    if (id.Parent is ForEachStatementSyntax forEachStmt && forEachStmt.Expression == id)
+                    {
+                        foundForEach = forEachStmt;
+                    }
+                    else
+                    {
+                        return false; // foreach 以外の場所で参照されている場合はNG
+                    }
+                }
+            }
         }
 
-        var nonAssignmentRefs = subsequentRefs.Where(r => 
-            !(r.Parent is AssignmentExpressionSyntax assign && assign.Left == r)).ToList();
-
-        // 参照がちょうど1回であり、それが foreach の式であれば安全
-        if (nonAssignmentRefs.Count == 1)
-        {
-            var onlyRef = nonAssignmentRefs[0];
-            return onlyRef.Parent is ForEachStatementSyntax forEachStmt && forEachStmt.Expression == onlyRef;
-        }
-
-        return false;
+        return nonAssignmentRefCount == 1 && foundForEach != null;
     }
 
     /// <summary>

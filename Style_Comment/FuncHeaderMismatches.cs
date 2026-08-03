@@ -3,6 +3,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
 
@@ -26,39 +27,91 @@ public class FuncHeaderMismatches : CommonAnalyzer
         if (IsGeneratedFile(context)) return;
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
 
-        var xmlTrivia = methodDeclaration.GetLeadingTrivia()
-            .Select(i => i.GetStructure())
-            .OfType<DocumentationCommentTriviaSyntax>()
-            .FirstOrDefault();
+        // 1. 先行トリビアから DocumentationCommentTriviaSyntax を効率よく取得
+        DocumentationCommentTriviaSyntax? xmlTrivia = null;
+        foreach (var trivia in methodDeclaration.GetLeadingTrivia())
+        {
+            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax doc)
+            {
+                xmlTrivia = doc;
+                break;
+            }
+        }
 
-        // コメントがない場合は別のアナライザー(COMM001)の担当とする
+        // コメントがない場合はスキップ
         if (xmlTrivia == null) return;
 
-        // コメントの文字列を取得
-        var commentText = xmlTrivia.ToString();
-
-        // <summary> が含まれていない変則的なコメント（エイリアンコード）の場合は、
-        // COMM002 の監視対象外としてスキップする（COMM001 や別の仕組みに委ねる）
-        if (!commentText.Contains("<summary>")) return;
-
-        // paramタグの抽出（SyntaxList 内の要素や入れ子から安全に param タグを再帰的に抽出する）
-        var paramTags = GetElementsRecursive(xmlTrivia.Content)
-            .Where(e => e.StartTag.Name.ToString() == "param")
-            .Select(e => e.StartTag.Attributes.OfType<XmlNameAttributeSyntax>().FirstOrDefault()?.Identifier.Identifier.ValueText)
-            .Where(name => name != null)
-            .ToList();
-
-        // メソッドの引数名抽出
-        var parameterNames = methodDeclaration.ParameterList.Parameters
-            .Select(p => p.Identifier.ValueText)
-            .ToList();
-
-        // 不一致の判定
-        if (paramTags.Count != parameterNames.Count || !paramTags.SequenceEqual(parameterNames))
+        // 2. 文字列化（ToString()）を避け、構文木ベースで <summary> が含まれているかを高速に判定する
+        bool hasSummary = false;
+        foreach (var node in GetElementsRecursive(xmlTrivia.Content))
         {
-            // 不一致箇所を特定し、メッセージに埋め込むための文字列生成
-            var missingParams = parameterNames.Except(paramTags).ToList();
-            var extraParams = paramTags.Except(parameterNames).ToList();
+            if (node.StartTag.Name.ToString() == "summary")
+            {
+                hasSummary = true;
+                break;
+            }
+        }
+
+        if (!hasSummary) return;
+
+        // 3. paramタグの名称をアロケーションを抑えて収集
+        // 重複や順序を考慮し、HashSet / List を効率的に構築
+        List<string>? paramTags = null;
+        foreach (var element in GetElementsRecursive(xmlTrivia.Content))
+        {
+            if (element.StartTag.Name.ToString() == "param")
+            {
+                foreach (var attr in element.StartTag.Attributes)
+                {
+                    if (attr is XmlNameAttributeSyntax nameAttr)
+                    {
+                        var name = nameAttr.Identifier.Identifier.ValueText;
+                        if (!string.IsNullOrEmpty(name))
+                        {
+                            paramTags ??= [];
+                            paramTags.Add(name);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        paramTags ??= [];
+
+        // 4. メソッドの引数名を効率的に抽出
+        var parameters = methodDeclaration.ParameterList.Parameters;
+        int paramCount = parameters.Count;
+
+        // パラメータ数が0かつXML側のparamも0件なら完全に一致しているため即リターン
+        if (paramCount == 0 && paramTags.Count == 0) return;
+
+        // 配列やリストを使って高速に比較
+        var parameterNames = new List<string>(paramCount);
+        foreach (var p in parameters)
+        {
+            parameterNames.Add(p.Identifier.ValueText);
+        }
+
+        // 5. 不一致の判定（要素数または順序・内容の比較）
+        bool isMismatched = paramTags.Count != parameterNames.Count;
+        if (!isMismatched)
+        {
+            for (int i = 0; i < paramCount; i++)
+            {
+                if (paramTags[i] != parameterNames[i])
+                {
+                    isMismatched = true;
+                    break;
+                }
+            }
+        }
+
+        if (isMismatched)
+        {
+            // 不一致箇所（過不足のあるパラメータ名）の特定
+            // 元の Except ロジック（missing と extra の結合）を維持
+            var missingParams = parameterNames.Except(paramTags);
+            var extraParams = paramTags.Except(parameterNames);
             var details = string.Join(", ", missingParams.Concat(extraParams));
 
             context.ReportDiagnostic(Diagnostic.Create(Rule, methodDeclaration.Identifier.GetLocation(), details));

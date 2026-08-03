@@ -3,8 +3,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
+using System.Collections.Generic;
 using System.Collections.Immutable;
-using System.Linq;
 
 namespace CSharp_IngeniousAnalyzer.Style_Comment;
 
@@ -27,33 +27,49 @@ public class FuncHeaderNotExists : CommonAnalyzer
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
 
         // 1. extern メソッドを除外
-        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.ExternKeyword))) return;
-
         // 2. abstract メソッドも除外（実装がないため）
-        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.AbstractKeyword))) return;
+        // 4. override メソッドも除外（コメントが重複するため）
+        foreach (var modifier in methodDeclaration.Modifiers)
+        {
+            if (modifier.IsKind(SyntaxKind.ExternKeyword) ||
+                modifier.IsKind(SyntaxKind.AbstractKeyword) ||
+                modifier.IsKind(SyntaxKind.OverrideKeyword))
+            {
+                return;
+            }
+        }
 
         // 3. インターフェース内のメソッド判定（念のため）
         if (methodDeclaration.Parent is InterfaceDeclarationSyntax) return;
 
-        //　4. override メソッドも除外（コメントが重複するため）
-        if (methodDeclaration.Modifiers.Any(m => m.IsKind(SyntaxKind.OverrideKeyword))) return;
+        // 既存のドキュメントコメントを効率よく取得
+        DocumentationCommentTriviaSyntax? xmlTrivia = null;
+        foreach (var trivia in methodDeclaration.GetLeadingTrivia())
+        {
+            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax doc)
+            {
+                xmlTrivia = doc;
+                break;
+            }
+        }
 
-        // 既存のドキュメントコメントチェック
-        var xmlTrivia = methodDeclaration.GetLeadingTrivia()
-            .Select(t => t.GetStructure())
-            .OfType<DocumentationCommentTriviaSyntax>()
-            .FirstOrDefault();
-
-        // 1. コメント自体が存在しない
-        // 2. コメントはあるが、中に <summary> タグが含まれていない
+        // 1. コメント自体が存在しない場合は無効とみなす
         bool isInvalidComment = xmlTrivia == null;
 
+        // 2. コメントはあるが、中に <summary> タグが含まれていないかを検証
         if (xmlTrivia != null)
         {
-            var summaryElement = GetElementsRecursive(xmlTrivia.Content)
-                .FirstOrDefault(e => e.StartTag.Name.ToString() == "summary");
+            bool hasSummary = false;
+            foreach (var element in GetElementsRecursive(xmlTrivia.Content))
+            {
+                if (element.StartTag.Name.ToString() == "summary")
+                {
+                    hasSummary = true;
+                    break;
+                }
+            }
 
-            if (summaryElement == null)
+            if (!hasSummary)
             {
                 isInvalidComment = true;
             }
@@ -65,6 +81,9 @@ public class FuncHeaderNotExists : CommonAnalyzer
         }
     }
 
+    /// <summary>
+    /// SyntaxList や XmlNodeSyntax の中から XmlElementSyntax を安全に再帰抽出するヘルパー
+    /// </summary>
     private static IEnumerable<XmlElementSyntax> GetElementsRecursive(SyntaxList<XmlNodeSyntax> nodes)
     {
         foreach (var node in nodes)

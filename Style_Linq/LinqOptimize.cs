@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -20,14 +21,22 @@ public class LinqOptimize : CommonAnalyzer
     // 監視ターゲットは「メソッド呼び出し（Invocation）」のみに絞る
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.InvocationExpression];
 
-    private static readonly HashSet<string> TargetMethods = ["FirstOrDefault", "Any", "Last"];
+    // HashSetの安全な初期化形式に変更（コレクション式の直接代入エラーを回避）
+    private static readonly HashSet<string> TargetMethods = new()
+    {
+        "First", 
+        "FirstOrDefault", 
+        "Any", 
+        "Last", 
+        "LastOrDefault"
+    };
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
         if (IsGeneratedFile(context)) return;
         var invocation = (InvocationExpressionSyntax)context.Node;
 
-        // 1. 自分自身のメソッド名が FirstOrDefault / Any / Last のいずれかか
+        // 1. 自分自身のメソッド名が対象メソッドのいずれかか
         if (invocation.Expression is not MemberAccessExpressionSyntax ma || !TargetMethods.Contains(ma.Name.Identifier.ValueText)) return;
 
         // 【作戦Aの鉄壁ガード】すでに右辺のメソッドに引数がある場合は完全スルー

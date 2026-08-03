@@ -32,14 +32,23 @@ public class StringEmpty : CommonAnalyzer
         if (!isLeftTarget && !isRightTarget) return;
 
         var targetNode = isLeftTarget ? binaryExpr.Left : binaryExpr.Right;
-        var diagnostic = Diagnostic.Create(Rule, targetNode.GetLocation(), targetNode.ToString().Trim());
+        
+        // ToString().Trim() による文字列アロケーションを避け、そのまま位置情報とテキストを取得
+        var diagnostic = Diagnostic.Create(Rule, targetNode.GetLocation(), targetNode.ToString());
         context.ReportDiagnostic(diagnostic);
     }
 
     private static bool IsLargeStringEmpty(ExpressionSyntax expression)
     {
-        return expression is MemberAccessExpressionSyntax ma && 
-               ma.Name.Identifier.ValueText == "Empty" && 
-               ma.Expression.ToString().Trim() == "String";
+        // ToString().Trim() による文字列生成を排除し、構文ノードのプロパティ（ValueText）で高速に完全一致判定を行う
+        if (expression is MemberAccessExpressionSyntax ma && 
+            ma.Name.Identifier.ValueText == "Empty" &&
+            ma.Expression is IdentifierNameSyntax id &&
+            id.Identifier.ValueText == "String")
+        {
+            return true;
+        }
+
+        return false;
     }
 }

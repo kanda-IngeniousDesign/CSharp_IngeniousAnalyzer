@@ -2,7 +2,7 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using CSharp_IngeniousAnalyzer.Style__Common;
 
@@ -26,23 +26,30 @@ public class ListCapacity : CommonAnalyzer
         if (IsGeneratedFile(context)) return;
         var objectCreation = (ObjectCreationExpressionSyntax)context.Node;
 
-        // 1. 生成されている型が「List<T>」であるかを検証する
-        if (context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken).Type is not INamedTypeSymbol typeSymbol || typeSymbol.OriginalDefinition.ToDisplayString() != "System.Collections.Generic.List<T>") return;
+        // 1. 初期サイズ指定やコレクション初期化子がある場合は対象外とする
+        if (objectCreation.ArgumentList?.Arguments.Count > 0 || objectCreation.Initializer != null) return;
 
-        // 2. すでに初期サイズが指定されている、あるいはコレクション初期化子がある場合はスルーする
-        if ((objectCreation.ArgumentList != null && objectCreation.ArgumentList.Arguments.Count > 0) || objectCreation.Initializer != null) return;
+        // 2. 生成されている型が「List<T>」であるかを高速に検証する
+        var typeInfo = context.SemanticModel.GetTypeInfo(objectCreation, context.CancellationToken);
+        if (typeInfo.Type is not INamedTypeSymbol typeSymbol || 
+            typeSymbol.Arity != 1 || 
+            typeSymbol.Name != "List" || 
+            typeSymbol.ContainingNamespace?.ToDisplayString() != "System.Collections.Generic")
+        {
+            return;
+        }
 
-        // 3. ループ上限式を安全逆引きする（取れない場合はスルーする）
+        // 3. ループ上限式を安全に逆引きする
         var limitExpression = GetLimitExpressionOrNull(objectCreation, context.SemanticModel, context.CancellationToken);
         if (limitExpression is null) return;
 
-        // 4. 上限値が「ローカル変数」であり、かつリスト生成よりも「後」に宣言されている場合は警告対象外とする
+        // 4. 上限値がローカル変数であり、かつリスト生成よりも後に宣言されている場合は対象外とする
         if (IsVariableDeclaredAfter(limitExpression, objectCreation, context.SemanticModel, context.CancellationToken))
         {
             return;
         }
 
-        // 安全かつ確実と確定したケース（ローカル変数または定数）のみ警告を通知する
+        // 警告を通知
         var diagnostic = Diagnostic.Create(Rule, objectCreation.GetLocation());
         context.ReportDiagnostic(diagnostic);
     }
@@ -53,20 +60,11 @@ public class ListCapacity : CommonAnalyzer
     private static bool IsVariableDeclaredAfter(ExpressionSyntax limitExpr, ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
         var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
-        var symbol = symbolInfo.Symbol;
-
-        // ローカル変数またはパラメータの場合のみ宣言位置を検証する
-        if (symbol is ILocalSymbol)
+        if (symbolInfo.Symbol is ILocalSymbol localSymbol)
         {
-            var syntaxRef = symbol.DeclaringSyntaxReferences.FirstOrDefault();
-            if (syntaxRef != null)
-            {
-                // 変数の宣言位置が、リストのインスタンス化よりも「後」にある場合は真（＝危険なので弾く）
-                return syntaxRef.Span.Start > objectCreation.SpanStart;
-            }
+            var syntaxRef = localSymbol.DeclaringSyntaxReferences[0];
+            return syntaxRef != null && syntaxRef.Span.Start > objectCreation.SpanStart;
         }
-
-        // プロパティアクセスや複雑な式、フィールドなどは追跡困難なため安全側に倒して false（除外対象外＝ここでは警告しない条件には該当させないが、GetLimitExpressionOrNullで既に弾かれている）
         return false;
     }
 
@@ -75,70 +73,83 @@ public class ListCapacity : CommonAnalyzer
     /// </summary>
     private static ExpressionSyntax? GetLimitExpressionOrNull(ObjectCreationExpressionSyntax objectCreation, SemanticModel semanticModel, CancellationToken cancellationToken)
     {
-        var variableDeclarator = objectCreation.AncestorsAndSelf().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
+        var variableDeclarator = objectCreation.FirstAncestorOfType<VariableDeclaratorSyntax>();
         if (variableDeclarator is null) return null;
 
         var listSymbol = semanticModel.GetDeclaredSymbol(variableDeclarator, cancellationToken);
         if (listSymbol is null) return null;
 
-        var methodBlock = objectCreation.Ancestors().OfType<BlockSyntax>().FirstOrDefault();
-        if (methodBlock is null) return null;
+        var methodBody = objectCreation.FirstAncestorOfType<BlockSyntax>();
+        if (methodBody is null) return null;
 
-        ForStatementSyntax? targetForLoop = null;
-
-        var allForLoops = methodBlock.DescendantNodes().OfType<ForStatementSyntax>();
-
-        foreach (var forLoop in allForLoops)
+        foreach (var forLoop in methodBody.DescendantNodes<ForStatementSyntax>())
         {
-            var invocations = forLoop.Statement.DescendantNodes().OfType<InvocationExpressionSyntax>();
-            foreach (var invocation in invocations)
+            if (UsesListInStatement(forLoop.Statement, listSymbol, semanticModel, cancellationToken))
             {
-                if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+                if (forLoop.Condition is BinaryExpressionSyntax binaryExpression &&
+                    binaryExpression.OperatorToken.IsKind(SyntaxKind.LessThanToken))
                 {
-                    var objSymbol = semanticModel.GetSymbolInfo(memberAccess.Expression, cancellationToken).Symbol;
-                    if (SymbolEqualityComparer.Default.Equals(objSymbol, listSymbol))
+                    var limitExpr = binaryExpression.Right;
+
+                    var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
+                    if (symbolInfo.Symbol != null && symbolInfo.Symbol is not ILocalSymbol && symbolInfo.Symbol is not IFieldSymbol)
                     {
-                        targetForLoop = forLoop;
-                        break;
+                        return null;
                     }
+                    if (limitExpr is MemberAccessExpressionSyntax)
+                    {
+                        return null;
+                    }
+
+                    return limitExpr;
                 }
             }
-
-            if (targetForLoop != null) break;
-        }
-
-        if (targetForLoop is null) return null;
-
-        if (targetForLoop.Statement.DescendantNodes().OfType<ForStatementSyntax>().Any())
-        {
-            return null;
-        }
-
-        if (targetForLoop.Condition is BinaryExpressionSyntax binaryExpression &&
-            binaryExpression.OperatorToken.IsKind(SyntaxKind.LessThanToken))
-        {
-            var limitExpr = binaryExpression.Right;
-
-            // 上限の右辺が「ローカル変数（ILocalSymbol）」または「定数・リテラル」であるものに厳しく限定する
-            var symbolInfo = semanticModel.GetSymbolInfo(limitExpr, cancellationToken);
-            if (symbolInfo.Symbol != null && symbolInfo.Symbol is not ILocalSymbol && symbolInfo.Symbol is not IFieldSymbol)
-            {
-                return null;
-            }
-            // プロパティアクセス（MemberAccessExpressionSyntax）などは完全に除外する
-            if (limitExpr is MemberAccessExpressionSyntax)
-            {
-                return null;
-            }
-
-            if (IsVariableDeclaredAfter(limitExpr, objectCreation, semanticModel, cancellationToken))
-            {
-                return null;
-            }
-
-            return limitExpr;
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// ステートメント内で指定されたリストシンボルが使用されているかを判定する
+    /// </summary>
+    private static bool UsesListInStatement(StatementSyntax statement, ISymbol listSymbol, SemanticModel semanticModel, CancellationToken cancellationToken)
+    {
+        foreach (var invocation in statement.DescendantNodes<InvocationExpressionSyntax>())
+        {
+            if (invocation.Expression is MemberAccessExpressionSyntax memberAccess)
+            {
+                var objSymbol = semanticModel.GetSymbolInfo(memberAccess.Expression, cancellationToken).Symbol;
+                if (SymbolEqualityComparer.Default.Equals(objSymbol, listSymbol))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+}
+
+/// <summary>
+/// パフォーマンス改善のための軽量な構文木走査ヘルパー
+/// </summary>
+internal static class SyntaxExtensions
+{
+    public static T? FirstAncestorOfType<T>(this SyntaxNode node) where T : SyntaxNode
+    {
+        var current = node.Parent;
+        while (current != null)
+        {
+            if (current is T match) return match;
+            current = current.Parent;
+        }
+        return null;
+    }
+
+    public static IEnumerable<T> DescendantNodes<T>(this SyntaxNode node) where T : SyntaxNode
+    {
+        foreach (var descendant in node.DescendantNodes())
+        {
+            if (descendant is T match) yield return match;
+        }
     }
 }

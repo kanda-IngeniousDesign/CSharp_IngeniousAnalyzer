@@ -1,4 +1,3 @@
-using System.Linq;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
@@ -48,7 +47,7 @@ public class MethodComplexity : CommonAnalyzer
     /// </summary>
     private static bool HasIgnoreComment(MethodDeclarationSyntax method)
     {
-        // 1. メソッド宣言自体に紐付く先行トリビア（アトリビュートの直前や、メソッド名の前など）をチェック
+        // 1. メソッド宣言自体に紐付く先行トリビアをチェック
         foreach (var trivia in method.GetLeadingTrivia())
         {
             if (IsIgnoreCommentTrivia(trivia)) return true;
@@ -62,7 +61,8 @@ public class MethodComplexity : CommonAnalyzer
                 if (IsIgnoreCommentTrivia(trivia)) return true;
             }
 
-            if (method.Body.Statements.FirstOrDefault() is { } firstStmt)
+            var firstStmt = method.Body.Statements.FirstOrDefault();
+            if (firstStmt != null)
             {
                 foreach (var trivia in firstStmt.GetLeadingTrivia())
                 {
@@ -82,7 +82,6 @@ public class MethodComplexity : CommonAnalyzer
         if (trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
         {
             var text = trivia.ToString().Trim();
-            // "// Ignore" または大文字小文字を無視して一致するか
             return text.Equals("// Ignore CPX001", System.StringComparison.OrdinalIgnoreCase);
         }
         return false;
@@ -92,35 +91,52 @@ public class MethodComplexity : CommonAnalyzer
     {
         int count = 1;
 
-        var invocations = method.DescendantNodes().OfType<InvocationExpressionSyntax>();
-        foreach (var inv in invocations)
+        // DescendantNodes() の重複走査（Linqによる分割）を避け、
+        // 1回のループで Invocation と複雑な構文ノードを同時に処理してアロケーションと走査コストを激減させる
+        foreach (var node in method.DescendantNodes())
         {
-            var symbol = model.GetSymbolInfo(inv).Symbol as IMethodSymbol;
-            if (symbol?.ContainingNamespace.ToDisplayString() == "System.Linq") count++;
-        }
-
-        var complexNodes = method.DescendantNodes().Where(n =>
-            n is IfStatementSyntax or ForStatementSyntax or ForEachStatementSyntax or
-            WhileStatementSyntax or DoStatementSyntax or SwitchSectionSyntax or CatchClauseSyntax or
-            ConditionalExpressionSyntax);
-
-        foreach (var node in complexNodes)
-        {
-            int depth = 0;
-            var parent = node.Parent;
-            while (parent != null && parent != method)
+            // 1. LINQ メソッド呼び出しの検出
+            if (node is InvocationExpressionSyntax inv)
             {
-                if (parent is IfStatementSyntax or ForStatementSyntax or ForEachStatementSyntax or
-                    WhileStatementSyntax or DoStatementSyntax or SwitchSectionSyntax or CatchClauseSyntax)
+                var symbol = model.GetSymbolInfo(inv).Symbol as IMethodSymbol;
+                if (symbol?.ContainingNamespace?.ToDisplayString() == "System.Linq")
                 {
-                    depth++;
+                    count++;
                 }
-                parent = parent.Parent;
             }
+            // 2. 複雑度を加算する構文ノードの検出
+            else if (IsComplexNode(node))
+            {
+                int depth = 0;
+                var parent = node.Parent;
+                while (parent != null && parent != method)
+                {
+                    if (IsComplexNode(parent))
+                    {
+                        depth++;
+                    }
+                    parent = parent.Parent;
+                }
 
-            count += (1 + depth);
+                count += (1 + depth);
+            }
         }
 
         return count;
+    }
+
+    /// <summary>
+    /// 複雑度計算の対象となる構文ノードかを判定するヘルパー
+    /// </summary>
+    private static bool IsComplexNode(SyntaxNode node)
+    {
+        return node is IfStatementSyntax 
+            or ForStatementSyntax 
+            or ForEachStatementSyntax 
+            or WhileStatementSyntax 
+            or DoStatementSyntax 
+            or SwitchSectionSyntax 
+            or CatchClauseSyntax 
+            or ConditionalExpressionSyntax;
     }
 }

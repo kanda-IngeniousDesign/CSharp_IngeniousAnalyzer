@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <Authors>Yuji Kanda</Authors>
-    <Description>C#コードの品質を劇的に高める静的アナライザーです。</Description>
+    <Description>IDEの標準機能の枠を超え、プロジェクト固有の規約や高度なLINQ最適化まで強制・自動化するC#静的アナライザーです。コードの可読性とパフォーマンスを同時に底上げし、保守性の高い持続可能なコードベースを実現します。</Description>
 
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageProjectUrl>https://github.com/kanda-IngeniousDesign/CSharp_IngeniousAnalyzer</PackageProjectUrl>
@@ -14,16 +14,15 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>2.2.6</Version>
+    <Version>3.0.0</Version>
 
     <PackageReleaseNotes>
-      - エイリアンコード対策 vol.3
-      - Countermeasure for alien code vol.3
+      - ビルド速度の改善
+      - Speedup of build
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
     <IsPackable>true</IsPackable>
     <IncludeBuildOutput>false</IncludeBuildOutput>
@@ -46,16 +45,16 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
- <ItemGroup>
-  <None Include="$(OutputPath)\$(AssemblyName).dll" 
-        Pack="true" 
-        PackagePath="analyzers/dotnet/cs/" 
-        Visible="false" />
+  <ItemGroup>
+    <None Include="$(OutputPath)\$(AssemblyName).dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs/" 
+          Visible="false" />
 
-  <None Include="$(OutputPath)\ja\$(AssemblyName).resources.dll" 
-        Pack="true" 
-        PackagePath="analyzers/dotnet/cs/ja/" 
-        Visible="false" />
+    <None Include="$(OutputPath)\ja\$(AssemblyName).resources.dll" 
+          Pack="true" 
+          PackagePath="analyzers/dotnet/cs/ja/" 
+          Visible="false" />
   </ItemGroup>
 
 </Project>

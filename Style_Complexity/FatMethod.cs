@@ -20,7 +20,7 @@ public class FatMethod : CommonAnalyzer
         DiagnosticId, Title, MessageFormat, Category, DiagnosticSeverity.Warning, isEnabledByDefault: true);
 
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.MethodDeclaration];
- 
+
     public override void Initialize(AnalysisContext context)
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
@@ -30,6 +30,8 @@ public class FatMethod : CommonAnalyzer
 
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
+        if (IsGeneratedFile(context)) return;
+
         var method = (MethodDeclarationSyntax)context.Node;
         if (method.Body == null) return;
 
@@ -39,15 +41,24 @@ public class FatMethod : CommonAnalyzer
         // 特定行を超えた場合のみ判定を開始
         if (lineCount > MaxLineThreshold)
         {
-            int invocationCount = method.Body.DescendantNodes().OfType<InvocationExpressionSyntax>().Count();
-            
-            // 呼び出し比率が 特定値未満であれば警告
-            if (invocationCount < (lineCount / MethodCallThreshold)) 
+            // DescendantNodes() と LINQ の Count() による全探索とアロケーションを排除し、
+            // foreach ループで直接カウントして高速化
+            int invocationCount = 0;
+            foreach (var node in method.Body.DescendantNodes())
             {
-                context.ReportDiagnostic(Diagnostic.Create(Rule, 
-                                                           method.Identifier.GetLocation(), 
-                                                           method.Identifier.Text, 
-                                                           lineCount, 
+                if (node.IsKind(SyntaxKind.InvocationExpression))
+                {
+                    invocationCount++;
+                }
+            }
+
+            // 呼び出し比率が特定値未満であれば警告
+            if (invocationCount < (lineCount / MethodCallThreshold))
+            {
+                context.ReportDiagnostic(Diagnostic.Create(Rule,
+                                                           method.Identifier.GetLocation(),
+                                                           method.Identifier.Text,
+                                                           lineCount,
                                                            invocationCount));
             }
         }

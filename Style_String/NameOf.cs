@@ -3,7 +3,6 @@ using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Generic;
-using System.Linq;
 using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_String;
@@ -30,8 +29,18 @@ public class Nameof : CommonAnalyzer
 
         SyntaxNode targetNode = context.Node;
 
-        // 所属する文を取得する
-        var statement = targetNode.Ancestors().OfType<StatementSyntax>().FirstOrDefault();
+        // 所属する文を取得する（Ancestors を効率よく辿る）
+        StatementSyntax? statement = null;
+        var current = targetNode.Parent;
+        while (current != null)
+        {
+            if (current is StatementSyntax stmt)
+            {
+                statement = stmt;
+                break;
+            }
+            current = current.Parent;
+        }
         if (statement is null) return;
 
         // 代入行全体を完全に除外する
@@ -59,7 +68,7 @@ public class Nameof : CommonAnalyzer
         // トリムした文字列全体が有効な識別子ではない場合は対象外とする
         if (!SyntaxFacts.IsValidIdentifier(trimmedText)) return;
 
-        // スコープ内の有効なローカル変数・パラメータ名を取得する
+        // スコープ内の有効なローカル変数・パラメータ名を取得する（アロケーションを抑えた取得）
         var localVariableNames = GetLocalVariableNames(statement, context.SemanticModel);
         if (localVariableNames.Count == 0) return;
 
@@ -91,35 +100,41 @@ public class Nameof : CommonAnalyzer
 
     private static bool IsAssignmentTarget(SyntaxNode node)
     {
-        var assignment = node.Ancestors().OfType<AssignmentExpressionSyntax>().FirstOrDefault();
-        if (assignment is not null)
+        var current = node.Parent;
+        while (current != null)
         {
-            if (assignment.Left.Span.Contains(node.Span) || assignment.Left.FullSpan.Contains(node.FullSpan))
+            if (current is AssignmentExpressionSyntax assignment)
             {
-                return true;
+                return assignment.Left.Span.Contains(node.Span) || assignment.Left.FullSpan.Contains(node.FullSpan);
             }
+            if (current is StatementSyntax) break;
+            current = current.Parent;
         }
         return false;
     }
 
     private static bool IsVariableDeclarationInitializer(SyntaxNode node)
     {
-        var declarator = node.Ancestors().OfType<VariableDeclaratorSyntax>().FirstOrDefault();
-        if (declarator?.Initializer is not null)
+        var current = node.Parent;
+        while (current != null)
         {
-            if (declarator.Initializer.Span.Contains(node.Span) || declarator.Initializer.FullSpan.Contains(node.FullSpan))
+            if (current is VariableDeclaratorSyntax declarator)
             {
-                return true;
+                return declarator.Initializer is not null &&
+                       (declarator.Initializer.Span.Contains(node.Span) || declarator.Initializer.FullSpan.Contains(node.FullSpan));
             }
+            if (current is StatementSyntax) break;
+            current = current.Parent;
         }
         return false;
     }
 
     private static bool IsInControlStatementCondition(SyntaxNode node)
     {
-        foreach (var ancestor in node.Ancestors())
+        var current = node.Parent;
+        while (current != null)
         {
-            switch (ancestor)
+            switch (current)
             {
                 case IfStatementSyntax ifStmt:
                     if (ifStmt.Condition.Span.Contains(node.Span)) return true;
@@ -137,19 +152,19 @@ public class Nameof : CommonAnalyzer
                     if (switchStmt.Expression.Span.Contains(node.Span)) return true;
                     break;
             }
+            current = current.Parent;
         }
         return false;
     }
 
     /// <summary>
-    /// 同じ文の内部に、対象の変数名と一致する識別子（IdentifierName）が実変数として存在するかを検証する
+    /// 同じ文の内部に、対象の変数名と一致する識別子（IdentifierName）が存在するかを検証する
     /// </summary>
     private static bool IsVariableUsedInStatement(StatementSyntax statement, string variableName)
     {
-        var identifiers = statement.DescendantNodes().OfType<IdentifierNameSyntax>();
-        foreach (var id in identifiers)
+        foreach (var node in statement.DescendantNodes())
         {
-            if (id.Identifier.ValueText == variableName)
+            if (node is IdentifierNameSyntax id && id.Identifier.ValueText == variableName)
             {
                 return true;
             }
@@ -170,15 +185,29 @@ public class Nameof : CommonAnalyzer
             }
         }
 
-        var methodBody = statement.Ancestors().OfType<MethodDeclarationSyntax>().FirstOrDefault()?.Body;
-        if (methodBody != null)
+        // メソッドボディ全体を探索する際、LINQ を使わず直接ループで高速化
+        MethodDeclarationSyntax? methodDecl = null;
+        var current = statement.Parent;
+        while (current != null)
         {
-            var variableDeclarators = methodBody.DescendantNodes().OfType<VariableDeclaratorSyntax>();
-            foreach (var declarator in variableDeclarators)
+            if (current is MethodDeclarationSyntax m)
             {
-                if (model.GetDeclaredSymbol(declarator) is ILocalSymbol)
+                methodDecl = m;
+                break;
+            }
+            current = current.Parent;
+        }
+
+        if (methodDecl?.Body != null)
+        {
+            foreach (var node in methodDecl.Body.DescendantNodes())
+            {
+                if (node is VariableDeclaratorSyntax declarator)
                 {
-                    identifiers.Add(declarator.Identifier.ValueText);
+                    if (model.GetDeclaredSymbol(declarator) is ILocalSymbol)
+                    {
+                        identifiers.Add(declarator.Identifier.ValueText);
+                    }
                 }
             }
         }
