@@ -44,6 +44,10 @@ public class FuncHeaderNotExists : CommonAnalyzer
 
         // 既存のドキュメントコメントを効率よく取得
         DocumentationCommentTriviaSyntax? xmlTrivia = null;
+        // GenerateDocumentationFile が無効なプロジェクトをビルドすると、
+        // コンパイラは /// コメントを構造化せず単純な SingleLineCommentTrivia として解釈する
+        // （IDE上の解析では常に構造化されるため、ビルド時のみ誤検知が発生するのを防ぐためのフォールバック）
+        List<string>? rawDocCommentLines = null;
         foreach (var trivia in methodDeclaration.GetLeadingTrivia())
         {
             if (trivia.GetStructure() is DocumentationCommentTriviaSyntax doc)
@@ -51,14 +55,19 @@ public class FuncHeaderNotExists : CommonAnalyzer
                 xmlTrivia = doc;
                 break;
             }
+
+            var text = trivia.ToString();
+            if ((trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && text.StartsWith("///")) ||
+                (trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) && text.StartsWith("/**")))
+            {
+                (rawDocCommentLines ??= []).Add(text);
+            }
         }
 
-        // 1. コメント自体が存在しない場合は無効とみなす
-        bool isInvalidComment = xmlTrivia == null;
-
-        // 2. コメントはあるが、中に <summary> タグが含まれていないかを検証
+        bool isInvalidComment;
         if (xmlTrivia != null)
         {
+            // 1. コメントはあるが、中に <summary> タグが含まれていないかを検証
             bool hasSummary = false;
             foreach (var element in GetElementsRecursive(xmlTrivia.Content))
             {
@@ -69,10 +78,25 @@ public class FuncHeaderNotExists : CommonAnalyzer
                 }
             }
 
-            if (!hasSummary)
+            isInvalidComment = !hasSummary;
+        }
+        else if (rawDocCommentLines != null)
+        {
+            // 構造化されていない場合は、生テキストに <summary> タグが含まれるかを検証
+            isInvalidComment = true;
+            foreach (var line in rawDocCommentLines)
             {
-                isInvalidComment = true;
+                if (line.Contains("<summary"))
+                {
+                    isInvalidComment = false;
+                    break;
+                }
             }
+        }
+        else
+        {
+            // 2. コメント自体が存在しない場合は無効とみなす
+            isInvalidComment = true;
         }
 
         if (isInvalidComment)
