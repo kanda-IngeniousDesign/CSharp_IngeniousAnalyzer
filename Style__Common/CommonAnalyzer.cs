@@ -15,14 +15,19 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
     protected enum ResourceEnum
     {
+        // Style_Null
         NULL001_Title,
         NULL001_Message,
 
+        // Style_String
         STR001_Title,
         STR001_Message,
         STR002_Title,
         STR002_Message,
+        STR003_Title,
+        STR003_Message,
 
+        // Style_Linq
         LINQ001_Title,
         LINQ001_Message,
         LINQ002_Title,
@@ -30,21 +35,29 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
         LINQ003_Title,
         LINQ003_Message,
 
+        // Style_Collection
         COLL001_Title,
         COLL001_Message,
 
+        // Style_Comment
         COMM001_Title,
         COMM001_Message,
         COMM002_Title,
         COMM002_Message,
 
+        // Style_Complexity
         CPX001_Title,
         CPX001_Message,
         CPX002_Title,
         CPX002_Message,
 
+        // Style_Compare
         COMP001_Title,
-        COMP001_Message
+        COMP001_Message,
+
+        // Style_Exception
+        EXC001_Title,
+        EXC001_Message
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)

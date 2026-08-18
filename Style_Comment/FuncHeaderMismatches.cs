@@ -6,6 +6,7 @@ using Microsoft.CodeAnalysis.Diagnostics;
 using System.Collections.Generic;
 using System.Collections.Immutable;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 namespace CSharp_IngeniousAnalyzer.Style_Comment;
 
@@ -22,6 +23,9 @@ public class FuncHeaderMismatches : CommonAnalyzer
 
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.MethodDeclaration];
 
+    // 生テキストフォールバック時に <param name="..."> の名称部分を抽出する
+    private static readonly Regex ParamNamePattern = new(@"<param\s+name\s*=\s*""([^""]*)""", RegexOptions.Compiled);
+
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
         if (IsGeneratedFile(context)) return;
@@ -29,6 +33,10 @@ public class FuncHeaderMismatches : CommonAnalyzer
 
         // 1. 先行トリビアから DocumentationCommentTriviaSyntax を効率よく取得
         DocumentationCommentTriviaSyntax? xmlTrivia = null;
+        // GenerateDocumentationFile が無効なプロジェクトをビルドすると、
+        // コンパイラは /// コメントを構造化せず単純な SingleLineCommentTrivia として解釈する
+        // （IDE上の解析では常に構造化されるため、ビルド時のみ検知漏れが発生するのを防ぐためのフォールバック）
+        List<string>? rawDocCommentLines = null;
         foreach (var trivia in methodDeclaration.GetLeadingTrivia())
         {
             if (trivia.GetStructure() is DocumentationCommentTriviaSyntax doc)
@@ -36,47 +44,71 @@ public class FuncHeaderMismatches : CommonAnalyzer
                 xmlTrivia = doc;
                 break;
             }
-        }
 
-        // コメントがない場合はスキップ
-        if (xmlTrivia == null) return;
-
-        // 2. 文字列化（ToString()）を避け、構文木ベースで <summary> が含まれているかを高速に判定する
-        bool hasSummary = false;
-        foreach (var node in GetElementsRecursive(xmlTrivia.Content))
-        {
-            if (node.StartTag.Name.ToString() == "summary")
+            var text = trivia.ToString();
+            if ((trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && text.StartsWith("///")) ||
+                (trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) && text.StartsWith("/**")))
             {
-                hasSummary = true;
-                break;
+                (rawDocCommentLines ??= []).Add(text);
             }
         }
 
-        if (!hasSummary) return;
+        List<string> paramTags;
 
-        // 3. paramタグの名称をアロケーションを抑えて収集
-        // 重複や順序を考慮し、HashSet / List を効率的に構築
-        List<string>? paramTags = null;
-        foreach (var element in GetElementsRecursive(xmlTrivia.Content))
+        if (xmlTrivia != null)
         {
-            if (element.StartTag.Name.ToString() == "param")
+            // 2. 文字列化（ToString()）を避け、構文木ベースで <summary> が含まれているかを高速に判定する
+            bool hasSummary = false;
+            foreach (var node in GetElementsRecursive(xmlTrivia.Content))
             {
-                foreach (var attr in element.StartTag.Attributes)
+                if (node.StartTag.Name.ToString() == "summary")
                 {
-                    if (attr is XmlNameAttributeSyntax nameAttr)
+                    hasSummary = true;
+                    break;
+                }
+            }
+
+            if (!hasSummary) return;
+
+            // 3. paramタグの名称をアロケーションを抑えて収集
+            // 重複や順序を考慮し、HashSet / List を効率的に構築
+            paramTags = [];
+            foreach (var element in GetElementsRecursive(xmlTrivia.Content))
+            {
+                if (element.StartTag.Name.ToString() == "param")
+                {
+                    foreach (var attr in element.StartTag.Attributes)
                     {
-                        var name = nameAttr.Identifier.Identifier.ValueText;
-                        if (!string.IsNullOrEmpty(name))
+                        if (attr is XmlNameAttributeSyntax nameAttr)
                         {
-                            paramTags ??= [];
-                            paramTags.Add(name);
+                            var name = nameAttr.Identifier.Identifier.ValueText;
+                            if (!string.IsNullOrEmpty(name))
+                            {
+                                paramTags.Add(name);
+                            }
+                            break;
                         }
-                        break;
                     }
                 }
             }
         }
-        paramTags ??= [];
+        else if (rawDocCommentLines != null)
+        {
+            // 構造化されていない場合は、生テキストから <summary>/<param name="..."> を判定する
+            var rawText = string.Join("", rawDocCommentLines);
+            if (!rawText.Contains("<summary")) return;
+
+            paramTags = [];
+            foreach (Match match in ParamNamePattern.Matches(rawText))
+            {
+                paramTags.Add(match.Groups[1].Value);
+            }
+        }
+        else
+        {
+            // コメント自体が存在しない場合はスキップ（欠落自体はCOMM001の責務）
+            return;
+        }
 
         // 4. メソッドの引数名を効率的に抽出
         var parameters = methodDeclaration.ParameterList.Parameters;

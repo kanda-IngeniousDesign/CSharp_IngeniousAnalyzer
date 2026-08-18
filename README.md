@@ -33,17 +33,20 @@ Default warning levels are set, but you can adjust them to fit your development 
 
 | ID | Title | Message |
 |---|---|---|
-| NULL001 | Prevention of operator overloading issues | Use the type-safe 'is null' pattern instead of operators (== / !=). |
+| NULL001 | Safety improvement by unifying to the 'is null' pattern | Use the type-safe 'is null' pattern instead of operators (== / !=). |
 | STR001 | Optimization by standardizing on string.Empty | Use lowercase 'string.Empty' instead of 'String.{0}' for consistency. |
 | STR002 | Safety improvement by replacing with nameof | Use type-safe 'nameof({0})' instead of the magic string '{0}'. |
+| STR003 | Code optimization by removing redundant ToString() calls | '{0}' is already a string. Remove the redundant '.ToString()' call. |
 | LINQ001 | Performance improvement by integrating LINQ evaluation | Integrate the Where().{0}() chain into a single '{0}(predicate)' for optimization. |
 | LINQ002 | Removal of unnecessary collection materialization | '{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation. |
+| LINQ003 | Performance improvement by finalizing the collection | '{0}' is enumerated multiple times. Finalize the result to avoid redundant calculations and improve performance. |
 | COLL001 | Memory reduction by specifying initial List capacity | Specify an initial capacity in the List constructor as the loop count is predictable. |
-| COMM001 | Missing function header | Function header is missing. Please add the documentation comments. |
-| COMM002 | Function header parameter mismatch | Function header parameters do not match the method definition. Please synchronize '{0}'. |
+| COMM001 | Improved readability and maintainability by adding documentation comments | Function header is missing. Please add the documentation comments. |
+| COMM002 | Improved accuracy by synchronizing function header parameters | Function header parameters do not match the method definition. Please synchronize '{0}'. |
 | CPX001 | Improve readability by reducing method complexity | Method '{0}' has a complexity of {1} (threshold: 17). Consider refactoring or splitting the logic. |
 | CPX002 | Improve maintainability by splitting long methods | Method '{0}' is {1} lines long. With only {2} invocations, consider refactoring or splitting the logic. |
 | COMP001 | Standardization of inequality operator direction | Please reverse the inequality signs to improve readability. |
+| EXC001 | Improved maintainability by clarifying exception handling | The catch block for '{0}' is empty. Add handling, or if this is intentional, leave a comment explaining why. |
 
 ---
 
@@ -79,14 +82,17 @@ C#のコード品質を劇的に高める静的アナライザーです。 NULL�
 
 | ID | Title (JP) | Message (JP) |
 |---|---|---|
-| NULL001 | 演算子オーバーロードによる不具合の防止 | 演算子（== / !=）ではなく、型安全な 'is null' パターンを使用してください。 |
+| NULL001 | 'is null'パターンへの統一による安全性向上 | 演算子（== / !=）ではなく、型安全な 'is null' パターンを使用してください。 |
 | STR001 | string.Emptyへの統一による最適化 | 'String.{0}' ではなく、一貫性を持たせるため小文字の 'string.Empty' を使用してください。 |
 | STR002 | nameofへの置き換えによる安全性向上 | 文字列リテラル '{0}' ではなく、型安全な 'nameof({0})' を使用してください。 |
+| STR003 | 冗長なToString()呼び出しの削除によるコード最適化 | '{0}' は既にstring型です。冗長な '.ToString()' 呼び出しを削除してください。 |
 | LINQ001 | LINQ評価の統合によるパフォーマンス向上 | Where().{0}() のチェーンを、単一の '{0}(predicate)' に統合して最適化してください。 |
 | LINQ002 | 不要なコレクションの実体化の削除 | '{0}' は列挙後に再利用されていません。メモリ確保を回避するため、呼び出しを削除してください。 |
+| LINQ003 | コレクションの確定によるパフォーマンス向上 | '{0}' は複数回列挙されています。メモリを確保して結果を確定させることで、計算の重複を排除しパフォーマンスを向上させてください。 |
 | COLL001 | List初期キャパシティ指定によるメモリ削減 | ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。 |
-| COMM001 | 関数ヘッダーの欠落 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
-| COMM002 | 関数ヘッダーのパラメータ不一致 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |
+| COMM001 | ドキュメントコメント追加による可読性・保守性の向上 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
+| COMM002 | パラメータ同期による関数ヘッダーの整合性向上 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |
 | CPX001 | メソッドの複雑度削減による可読性の向上 | メソッド '{0}' の複雑度が {1} です（閾値: 17）。分割やリファクタリングを検討してください。 |
 | CPX002 | メソッド分割による保守性の向上 | メソッド '{0}' は {1} 行と長大です。関数呼び出しが {2} 回と少ないため、処理の分割を検討してください。 |
 | COMP001 | 不等号演算子の向きの統一 | 可読性向上のため、不等号を反転させてください。 |
+| EXC001 | 例外処理の明確化による保守性向上 | '{0}' のcatchブロックが空です。処理を追加するか、意図的な場合はその理由をコメントで記述してください。 |

@@ -14,11 +14,15 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.0.2</Version>
+    <Version>3.1.0</Version>
 
     <PackageReleaseNotes>
-      - COMM001が消えない不具合を修正
-      - Fix COMM001 not being resolved
+      - EXC001（空のcatchブロック検知）・STR003（冗長なToString()呼び出し検知）を追加
+      - COMM001/COMM002がGenerateDocumentationFile未設定環境で正しく動作しない不具合を修正
+      - STR002/STR003のFixが一部ケースで正しく動作しない不具合を修正
+      - Add EXC001 (empty catch block) and STR003 (redundant ToString) rules
+      - Fix COMM001/COMM002 not working without GenerateDocumentationFile
+      - Fix STR002/STR003 code fixes not working correctly in some cases
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>

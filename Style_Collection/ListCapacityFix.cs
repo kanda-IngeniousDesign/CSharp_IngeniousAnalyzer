@@ -12,8 +12,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CSharp_IngeniousAnalyzer.Style_Collection;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ListCapacityCodeFix)), Shared]
-public class ListCapacityCodeFix : CodeFixProvider
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ListCapacityFix)), Shared]
+public class ListCapacityFix : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [ListCapacity.DiagnosticId];
 

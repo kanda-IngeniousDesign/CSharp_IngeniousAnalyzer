@@ -8,8 +8,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CSharp_IngeniousAnalyzer.Style_Linq;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(LinqOptimizationFix)), Shared]
-public class LinqOptimizationFix : CodeFixProvider
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(LinqOptimizeFix)), Shared]
+public class LinqOptimizeFix : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [LinqOptimize.DiagnosticId];
 

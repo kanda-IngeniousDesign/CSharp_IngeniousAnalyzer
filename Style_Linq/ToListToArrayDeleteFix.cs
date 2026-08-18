@@ -7,8 +7,8 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CSharp_IngeniousAnalyzer.Style_Linq;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ToListToArrayDeleteCodeFixProvider)), Shared]
-public class ToListToArrayDeleteCodeFixProvider : CodeFixProvider
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(ToListToArrayDeleteFix)), Shared]
+public class ToListToArrayDeleteFix : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [ToListToArrayDelete.DiagnosticId];
 

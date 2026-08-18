@@ -5,7 +5,7 @@
   <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
   <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
 
-  <data name="NULL001_Title"><value>Prevention of operator overloading issues</value></data>
+  <data name="NULL001_Title"><value>Safety improvement by unifying to the 'is null' pattern</value></data>
   <data name="NULL001_Message"><value>Use the type-safe 'is null' pattern instead of operators (== / !=).</value></data>
 
   <data name="STR001_Title"><value>Optimization by standardizing on string.Empty</value></data>
@@ -20,24 +20,30 @@
   <data name="LINQ002_Title"><value>Removal of unnecessary collection materialization</value></data>
   <data name="LINQ002_Message"><value>'{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation.</value></data>
 
-  <data name="LINQ003_Title"><value>Prevention of re-evaluation by finalizing collection</value></data>
+  <data name="LINQ003_Title"><value>Performance improvement by finalizing the collection</value></data>
   <data name="LINQ003_Message"><value>'{0}' is enumerated multiple times. Finalize the result to avoid redundant calculations and improve performance.</value></data>
 
   <data name="COLL001_Title"><value>Memory reduction by specifying initial List capacity</value></data>
   <data name="COLL001_Message"><value>Specify an initial capacity in the List constructor as the loop count is predictable.</value></data>
 
-  <data name="COMM001_Title"><value>Missing function header</value></data>
+  <data name="COMM001_Title"><value>Improved readability and maintainability by adding documentation comments</value></data>
   <data name="COMM001_Message"><value>Function header is missing. Please add the documentation comments.</value></data>
-  
-  <data name="COMM002_Title"><value>Function header parameter mismatch</value></data>
+
+  <data name="COMM002_Title"><value>Improved accuracy by synchronizing function header parameters</value></data>
   <data name="COMM002_Message"><value>Function header parameters do not match the method definition. Please synchronize '{0}'.</value></data>
 
   <data name="CPX001_Title" xml:space="preserve"><value>Improve readability by reducing method complexity</value></data>
   <data name="CPX001_Message" xml:space="preserve"><value>Method '{0}' has a complexity of {1} (threshold: 17). Consider refactoring or splitting the logic.</value></data>
 
-  <data name="CPX002_Title"><value>Method extraction recommended</value></data>
+  <data name="CPX002_Title"><value>Improve maintainability by splitting long methods</value></data>
   <data name="CPX002_Message"><value>Method '{0}' has {1} lines of code but only {2} method invocations. Please consider refactoring by extracting logic into smaller methods.</value></data>
 
   <data name="COMP001_Title"><value>Standardization of inequality operator direction</value></data>
-  <data name="COMP001_Message"><value>lease reverse the inequality signs to improve readability.</value></data>
+  <data name="COMP001_Message"><value>Please reverse the inequality signs to improve readability.</value></data>
+
+  <data name="EXC001_Title"><value>Improved maintainability by clarifying exception handling</value></data>
+  <data name="EXC001_Message"><value>The catch block for '{0}' is empty. Add handling, or if this is intentional, leave a comment explaining why.</value></data>
+
+  <data name="STR003_Title"><value>Code optimization by removing redundant ToString() calls</value></data>
+  <data name="STR003_Message"><value>'{0}' is already a string. Remove the redundant '.ToString()' call.</value></data>
 </root>

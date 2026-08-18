@@ -37,7 +37,7 @@ public class FuncHeaderMismatchesFix : CodeFixProvider
 private async Task<Document> SyncParamsAsync(Document document, MethodDeclarationSyntax methodDecl, CancellationToken cancellationToken)
     {
         var sourceText = await document.GetTextAsync(cancellationToken);
-        
+
         // 1. メソッドの直前にあるトリビアから DocumentationCommentTriviaSyntax を取得
         var leadingTrivia = methodDecl.GetLeadingTrivia();
         SyntaxTrivia docTrivia = default;
@@ -50,9 +50,43 @@ private async Task<Document> SyncParamsAsync(Document document, MethodDeclaratio
             }
         }
 
-        if (docTrivia == default) return document;
+        TextSpan commentSpan;
+        string originalComment;
 
-        var originalComment = docTrivia.ToString();
+        if (docTrivia != default)
+        {
+            commentSpan = docTrivia.Span;
+            originalComment = docTrivia.ToString();
+        }
+        else
+        {
+            // GenerateDocumentationFile が無効なビルドでは /// コメントが構造化されないため
+            // （IDE上の解析では常に構造化されるため、ビルド時のみFixが無効化されるのを防ぐ）、
+            // 生テキストの範囲を直接特定して同じ処理にフォールバックする
+            int firstIndex = -1, lastIndex = -1;
+            for (int i = 0; i < leadingTrivia.Count; i++)
+            {
+                var text = leadingTrivia[i].ToString();
+                if (leadingTrivia[i].IsKind(SyntaxKind.SingleLineCommentTrivia) && text.StartsWith("///"))
+                {
+                    if (firstIndex < 0) firstIndex = i;
+                    lastIndex = i;
+                }
+            }
+
+            if (firstIndex < 0) return document;
+
+            // 先頭行のインデントを保持するため、直前の空白トリビアも範囲に含める
+            var startTrivia = leadingTrivia[firstIndex];
+            if (firstIndex > 0 && leadingTrivia[firstIndex - 1].IsKind(SyntaxKind.WhitespaceTrivia))
+            {
+                startTrivia = leadingTrivia[firstIndex - 1];
+            }
+
+            commentSpan = TextSpan.FromBounds(startTrivia.SpanStart, leadingTrivia[lastIndex].Span.End);
+            originalComment = sourceText.ToString(commentSpan);
+        }
+
         var lineBreak = originalComment.Contains("\r\n") ? "\r\n" : "\n";
         var lines = originalComment.Split(new[] { "\r\n", "\r", "\n" }, StringSplitOptions.None);
         
@@ -77,7 +111,7 @@ private async Task<Document> SyncParamsAsync(Document document, MethodDeclaratio
         // あるいは sourceText から安全に位置を特定してテキスト変更を行うことで誤爆を根絶する
         // docTrivia.FullSpan や Span に余分な改行が含まれる場合があるため、
         // 該当コメントの開始位置から文字数を正確に合わせた TextChange を適用します。
-        var textChange = new TextChange(docTrivia.Span, newCommentText);
+        var textChange = new TextChange(commentSpan, newCommentText);
         return document.WithText(sourceText.WithChanges(textChange));
     }
 

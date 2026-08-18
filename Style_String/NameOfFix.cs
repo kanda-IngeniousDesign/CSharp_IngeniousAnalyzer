@@ -13,8 +13,8 @@ using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_String;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NameofFix)), Shared]
-public class NameofFix : CodeFixProvider
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NameOfFix)), Shared]
+public class NameOfFix : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [Nameof.DiagnosticId];
 
@@ -124,10 +124,11 @@ public class NameofFix : CodeFixProvider
     /// </summary>
     private static InvocationExpressionSyntax CreateNameofExpression(string variableName)
     {
-        var nameofIdentifier = SyntaxFactory.IdentifierName("nameof");
-        var argument = SyntaxFactory.Argument(SyntaxFactory.IdentifierName(variableName));
-        var argumentList = SyntaxFactory.ArgumentList(SyntaxFactory.SeparatedList([argument]));
-        return SyntaxFactory.InvocationExpression(nameofIdentifier, argumentList);
+        // SyntaxFactory.IdentifierName("nameof") + InvocationExpression で手組みすると、
+        // パーサーが通常付与する「nameofは文脈キーワードである」という認識がトークンに乗らず、
+        // 見た目は同じ 'nameof(x)' でもバインダーが実在しない識別子として扱い CS0103 になる。
+        // ParseExpression で実際にパースさせることで、この文脈キーワード認識を正しく持たせる。
+        return (InvocationExpressionSyntax)SyntaxFactory.ParseExpression($"nameof({variableName})");
     }
 
     /// <summary>
