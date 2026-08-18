@@ -428,8 +428,8 @@ FodyWeavers.xsd
 *.msm
 *.msp
 
-# Visual Studio Code workspace files
-# ビルド成果物とキャッシュを無視する
-bin/
-obj/
+# macOS Finder metadata
+.DS_Store
+
+# ローカル専用ファイル（コミット対象外）
 key.cs

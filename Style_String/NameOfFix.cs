@@ -16,7 +16,7 @@ namespace CSharp_IngeniousAnalyzer.Style_String;
 [ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(NameOfFix)), Shared]
 public class NameOfFix : CodeFixProvider
 {
-    public sealed override ImmutableArray<string> FixableDiagnosticIds => [Nameof.DiagnosticId];
+    public sealed override ImmutableArray<string> FixableDiagnosticIds => [NameOf.DiagnosticId];
 
     public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
@@ -83,7 +83,7 @@ public class NameOfFix : CodeFixProvider
         if (parts.Length < 2) return document;
 
         var interpolation = SyntaxFactory.Interpolation(CreateNameofExpression(variableName));
-        
+
         var contents = new SyntaxList<InterpolatedStringContentSyntax>();
         AddLiteralTextTokenIfNotEmpty(ref contents, parts[0], literal);
         contents = contents.Add(interpolation);
@@ -195,7 +195,7 @@ public class NameOfFix : CodeFixProvider
     private static string ExtractMatchingVariableName(string text, HashSet<string> validVariableNames)
     {
         char[] charsToTrim = [' ', '\t', '\r', '\n', '[', ']', '(', ')', '{', '}', '"', '\'', '：', ':', ';', ',', '.', '<', '>', '/', '\\', '|', '!', '@', '#', '$', '%', '^', '&', '*', '-', '+', '=', '~', '`'];
-        
+
         var words = text.Split([' ', ':', '=', ',', ';', '\t', '\r', '\n', '-', '>', '<', '+', '*'], System.StringSplitOptions.RemoveEmptyEntries);
         foreach (var word in words)
         {

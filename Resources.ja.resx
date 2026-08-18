@@ -20,9 +20,6 @@
   <data name="LINQ002_Title"><value>不要なコレクション確定の削除</value></data>
   <data name="LINQ002_Message"><value>'{0}' は列挙後に再利用されていません。不要なコレクションの実体化（メモリ確保）を回避するため、呼び出しを削除してください。</value></data>
 
-  <data name="LINQ003_Title"><value>コレクションの確定によるパフォーマンス向上</value></data>
-  <data name="LINQ003_Message"><value>'{0}' は複数回列挙されています。メモリを確保して結果を確定させることで、計算の重複を排除しパフォーマンスを向上させてください。</value></data>
-
   <data name="COLL001_Title"><value>List初期キャパシティ指定によるメモリ削減</value></data>
   <data name="COLL001_Message"><value>ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。</value></data>
 

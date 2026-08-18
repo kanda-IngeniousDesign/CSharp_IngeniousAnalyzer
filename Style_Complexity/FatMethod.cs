@@ -6,6 +6,8 @@ using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_Complexity;
 
+// CPX002には自動修正（CodeFixProvider）を用意していない。
+// 巨大メソッドの分割は機械的に安全な変換が定義できず、100%の精度を保証できないため、手動での対応を前提としている。
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class FatMethod : CommonAnalyzer
 {

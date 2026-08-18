@@ -8,7 +8,7 @@ using CSharp_IngeniousAnalyzer.Style__Common;
 namespace CSharp_IngeniousAnalyzer.Style_String;
 
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
-public class Nameof : CommonAnalyzer
+public class NameOf : CommonAnalyzer
 {
     public const string DiagnosticId = "STR002";
     private const string Category = "Style";

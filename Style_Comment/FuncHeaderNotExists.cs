@@ -42,27 +42,8 @@ public class FuncHeaderNotExists : CommonAnalyzer
         // 3. インターフェース内のメソッド判定（念のため）
         if (methodDeclaration.Parent is InterfaceDeclarationSyntax) return;
 
-        // 既存のドキュメントコメントを効率よく取得
-        DocumentationCommentTriviaSyntax? xmlTrivia = null;
-        // GenerateDocumentationFile が無効なプロジェクトをビルドすると、
-        // コンパイラは /// コメントを構造化せず単純な SingleLineCommentTrivia として解釈する
-        // （IDE上の解析では常に構造化されるため、ビルド時のみ誤検知が発生するのを防ぐためのフォールバック）
-        List<string>? rawDocCommentLines = null;
-        foreach (var trivia in methodDeclaration.GetLeadingTrivia())
-        {
-            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax doc)
-            {
-                xmlTrivia = doc;
-                break;
-            }
-
-            var text = trivia.ToString();
-            if ((trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && text.StartsWith("///")) ||
-                (trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) && text.StartsWith("/**")))
-            {
-                (rawDocCommentLines ??= []).Add(text);
-            }
-        }
+        // 既存のドキュメントコメントを取得（GenerateDocumentationFile無効時は生テキストへフォールバック）
+        var (xmlTrivia, rawDocCommentLines) = DocCommentScanner.TryGetDocComment(methodDeclaration);
 
         bool isInvalidComment;
         if (xmlTrivia != null)
@@ -86,7 +67,7 @@ public class FuncHeaderNotExists : CommonAnalyzer
             isInvalidComment = true;
             foreach (var line in rawDocCommentLines)
             {
-                if (line.Contains("<summary"))
+                if (line.ToString().Contains("<summary"))
                 {
                     isInvalidComment = false;
                     break;

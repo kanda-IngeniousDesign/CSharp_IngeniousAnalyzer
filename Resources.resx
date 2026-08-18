@@ -20,9 +20,6 @@
   <data name="LINQ002_Title"><value>Removal of unnecessary collection materialization</value></data>
   <data name="LINQ002_Message"><value>'{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation.</value></data>
 
-  <data name="LINQ003_Title"><value>Performance improvement by finalizing the collection</value></data>
-  <data name="LINQ003_Message"><value>'{0}' is enumerated multiple times. Finalize the result to avoid redundant calculations and improve performance.</value></data>
-
   <data name="COLL001_Title"><value>Memory reduction by specifying initial List capacity</value></data>
   <data name="COLL001_Message"><value>Specify an initial capacity in the List constructor as the loop count is predictable.</value></data>
 

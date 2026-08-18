@@ -20,9 +20,16 @@ public class LinqOptimizeFix : CodeFixProvider
         var root = await context.Document.GetSyntaxRootAsync(context.CancellationToken).ConfigureAwait(false);
         if (root is null) return;
 
-        // 自作の共通拡張メソッド「FindNodeAtSpan」でスッキリ逆引き
-        var invocation = root.FindNodeAtSpan<InvocationExpressionSyntax>(context.Diagnostics.First().Location.SourceSpan);
-        if (invocation is null) return;
+        // 警告位置のスパンに厳密に一致するノードを取得する
+        // （Where().Where().FirstOrDefault() のようにネストした呼び出しは開始位置が同じになるため、
+        //   祖先を辿る FindNodeAtSpan<T> だと内側の呼び出しを誤って拾ってしまう）
+        // 呼び出しが引数として渡されている場合（例: Foo(list.Where(x).FirstOrDefault())）、
+        // 呼び出し自体のスパンが引数を包む ArgumentSyntax と完全に一致（タイ）するため、
+        // getInnermostNodeForTie: true でタイ時に内側（呼び出し自体）を優先させる
+        if (root.FindNode(context.Diagnostics.First().Location.SourceSpan, getInnermostNodeForTie: true) is not InvocationExpressionSyntax invocation)
+        {
+            return;
+        }
 
         context.RegisterCodeFix(
             CodeAction.Create(

@@ -38,53 +38,40 @@ private async Task<Document> SyncParamsAsync(Document document, MethodDeclaratio
     {
         var sourceText = await document.GetTextAsync(cancellationToken);
 
-        // 1. メソッドの直前にあるトリビアから DocumentationCommentTriviaSyntax を取得
-        var leadingTrivia = methodDecl.GetLeadingTrivia();
-        SyntaxTrivia docTrivia = default;
-        foreach (var trivia in leadingTrivia)
-        {
-            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax)
-            {
-                docTrivia = trivia;
-                break;
-            }
-        }
+        // 1. メソッドの直前にあるドキュメントコメントを取得（COMM002の検知ロジックと同じ判定基準に揃える）
+        var (docTrivia, rawDocCommentTrivia) = DocCommentScanner.TryGetDocComment(methodDecl);
 
         TextSpan commentSpan;
         string originalComment;
 
-        if (docTrivia != default)
+        if (docTrivia != null)
         {
             commentSpan = docTrivia.Span;
             originalComment = docTrivia.ToString();
         }
-        else
+        else if (rawDocCommentTrivia != null && rawDocCommentTrivia.Count > 0)
         {
             // GenerateDocumentationFile が無効なビルドでは /// コメントが構造化されないため
             // （IDE上の解析では常に構造化されるため、ビルド時のみFixが無効化されるのを防ぐ）、
             // 生テキストの範囲を直接特定して同じ処理にフォールバックする
-            int firstIndex = -1, lastIndex = -1;
-            for (int i = 0; i < leadingTrivia.Count; i++)
-            {
-                var text = leadingTrivia[i].ToString();
-                if (leadingTrivia[i].IsKind(SyntaxKind.SingleLineCommentTrivia) && text.StartsWith("///"))
-                {
-                    if (firstIndex < 0) firstIndex = i;
-                    lastIndex = i;
-                }
-            }
-
-            if (firstIndex < 0) return document;
+            var firstTrivia = rawDocCommentTrivia[0];
+            var lastTrivia = rawDocCommentTrivia[rawDocCommentTrivia.Count - 1];
 
             // 先頭行のインデントを保持するため、直前の空白トリビアも範囲に含める
-            var startTrivia = leadingTrivia[firstIndex];
+            var leadingTrivia = methodDecl.GetLeadingTrivia();
+            var firstIndex = leadingTrivia.IndexOf(firstTrivia);
+            var startTrivia = firstTrivia;
             if (firstIndex > 0 && leadingTrivia[firstIndex - 1].IsKind(SyntaxKind.WhitespaceTrivia))
             {
                 startTrivia = leadingTrivia[firstIndex - 1];
             }
 
-            commentSpan = TextSpan.FromBounds(startTrivia.SpanStart, leadingTrivia[lastIndex].Span.End);
+            commentSpan = TextSpan.FromBounds(startTrivia.SpanStart, lastTrivia.Span.End);
             originalComment = sourceText.ToString(commentSpan);
+        }
+        else
+        {
+            return document;
         }
 
         var lineBreak = originalComment.Contains("\r\n") ? "\r\n" : "\n";

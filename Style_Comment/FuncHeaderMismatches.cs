@@ -31,27 +31,8 @@ public class FuncHeaderMismatches : CommonAnalyzer
         if (IsGeneratedFile(context)) return;
         var methodDeclaration = (MethodDeclarationSyntax)context.Node;
 
-        // 1. 先行トリビアから DocumentationCommentTriviaSyntax を効率よく取得
-        DocumentationCommentTriviaSyntax? xmlTrivia = null;
-        // GenerateDocumentationFile が無効なプロジェクトをビルドすると、
-        // コンパイラは /// コメントを構造化せず単純な SingleLineCommentTrivia として解釈する
-        // （IDE上の解析では常に構造化されるため、ビルド時のみ検知漏れが発生するのを防ぐためのフォールバック）
-        List<string>? rawDocCommentLines = null;
-        foreach (var trivia in methodDeclaration.GetLeadingTrivia())
-        {
-            if (trivia.GetStructure() is DocumentationCommentTriviaSyntax doc)
-            {
-                xmlTrivia = doc;
-                break;
-            }
-
-            var text = trivia.ToString();
-            if ((trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && text.StartsWith("///")) ||
-                (trivia.IsKind(SyntaxKind.MultiLineCommentTrivia) && text.StartsWith("/**")))
-            {
-                (rawDocCommentLines ??= []).Add(text);
-            }
-        }
+        // 1. 先行トリビアから DocumentationCommentTriviaSyntax を取得（GenerateDocumentationFile無効時は生テキストへフォールバック）
+        var (xmlTrivia, rawDocCommentLines) = DocCommentScanner.TryGetDocComment(methodDeclaration);
 
         List<string> paramTags;
 

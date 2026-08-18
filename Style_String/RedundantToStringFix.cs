@@ -29,7 +29,10 @@ public class RedundantToStringFix : CodeFixProvider
         // 警告位置のスパンに厳密に一致するノードを取得する
         // （呼び出し元自体もメソッド呼び出しである場合、祖先を辿るFindNodeAtSpan<T>だと
         //   内側の呼び出し（例: GetName().ToString() の GetName()）を誤って拾ってしまうため）
-        var targetNode = root.FindNode(span);
+        // 呼び出しが引数として渡されている場合（例: Foo(s.ToString())）、
+        // 呼び出し自体のスパンが引数を包む ArgumentSyntax と完全に一致（タイ）するため、
+        // getInnermostNodeForTie: true でタイ時に内側（呼び出し自体）を優先させる
+        var targetNode = root.FindNode(span, getInnermostNodeForTie: true);
         if (targetNode is not (InvocationExpressionSyntax or ConditionalAccessExpressionSyntax)) return;
 
         context.RegisterCodeFix(

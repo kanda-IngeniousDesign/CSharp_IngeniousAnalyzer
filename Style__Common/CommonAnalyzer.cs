@@ -32,8 +32,6 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
         LINQ001_Message,
         LINQ002_Title,
         LINQ002_Message,
-        LINQ003_Title,
-        LINQ003_Message,
 
         // Style_Collection
         COLL001_Title,

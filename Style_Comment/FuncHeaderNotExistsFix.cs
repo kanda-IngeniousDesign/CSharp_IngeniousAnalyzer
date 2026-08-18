@@ -10,8 +10,8 @@ using Microsoft.CodeAnalysis.Text;
 
 namespace CSharp_IngeniousAnalyzer.Style_Comment;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(FuncHeaderNotExistsFixer)), Shared]
-public class FuncHeaderNotExistsFixer : CodeFixProvider
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(FuncHeaderNotExistsFix)), Shared]
+public class FuncHeaderNotExistsFix : CodeFixProvider
 {
     public sealed override ImmutableArray<string> FixableDiagnosticIds => [FuncHeaderNotExists.DiagnosticId];
 
@@ -29,7 +29,7 @@ public class FuncHeaderNotExistsFixer : CodeFixProvider
             CodeAction.Create(
                 title: "Fix : 関数ヘッダーを新規作成する",
                 createChangedDocument: c => CreateHeaderAsync(context.Document, methodDecl, c),
-                equivalenceKey: nameof(FuncHeaderNotExistsFixer)),
+                equivalenceKey: nameof(FuncHeaderNotExistsFix)),
             diagnostic);
     }
 

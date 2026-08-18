@@ -14,6 +14,8 @@ Thank you very much for using this analyzer in your daily development. I created
 This analyzer is fully integrated with Visual Studio's "Live Code Analysis." Simply open your project, and it will automatically analyze your code as you edit it, providing real-time warnings.
 If it does not run automatically, try rebuilding the project, restarting Visual Studio, or deleting the hidden .vs folder in your project root.
 
+It also works the same way with `dotnet build`, VS Code (with the C# extension), and JetBrains Rider, since it's a standard Roslyn analyzer distributed as a NuGet package.
+
 ## Coding Style
 
 We use .editorconfig to enforce a unified code style and maintain high maintainability. We recommend ensuring the following settings are applied to maintain consistent code quality:
@@ -24,10 +26,10 @@ We use .editorconfig to enforce a unified code style and maintain high maintaina
 
 Default warning levels are set, but you can adjust them to fit your development environment or preferences. For example, to change a rule's severity from warning to info, modify your .editorconfig as follows:
 
-**Example: Changing COL001 from 'warning' to 'info'**
-    dotnet_diagnostic.COL001.severity = warning
+**Example: Changing COLL001 from 'warning' to 'info'**
+    dotnet_diagnostic.COLL001.severity = warning
     ↓
-    dotnet_diagnostic.COL001.severity = info
+    dotnet_diagnostic.COLL001.severity = info
 
 ## Rule List
 
@@ -39,12 +41,11 @@ Default warning levels are set, but you can adjust them to fit your development 
 | STR003 | Code optimization by removing redundant ToString() calls | '{0}' is already a string. Remove the redundant '.ToString()' call. |
 | LINQ001 | Performance improvement by integrating LINQ evaluation | Integrate the Where().{0}() chain into a single '{0}(predicate)' for optimization. |
 | LINQ002 | Removal of unnecessary collection materialization | '{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation. |
-| LINQ003 | Performance improvement by finalizing the collection | '{0}' is enumerated multiple times. Finalize the result to avoid redundant calculations and improve performance. |
 | COLL001 | Memory reduction by specifying initial List capacity | Specify an initial capacity in the List constructor as the loop count is predictable. |
 | COMM001 | Improved readability and maintainability by adding documentation comments | Function header is missing. Please add the documentation comments. |
 | COMM002 | Improved accuracy by synchronizing function header parameters | Function header parameters do not match the method definition. Please synchronize '{0}'. |
 | CPX001 | Improve readability by reducing method complexity | Method '{0}' has a complexity of {1} (threshold: 17). Consider refactoring or splitting the logic. |
-| CPX002 | Improve maintainability by splitting long methods | Method '{0}' is {1} lines long. With only {2} invocations, consider refactoring or splitting the logic. |
+| CPX002 | Improve maintainability by splitting long methods | Method '{0}' has {1} lines of code but only {2} method invocations. Please consider refactoring by extracting logic into smaller methods. |
 | COMP001 | Standardization of inequality operator direction | Please reverse the inequality signs to improve readability. |
 | EXC001 | Improved maintainability by clarifying exception handling | The catch block for '{0}' is empty. Add handling, or if this is intentional, leave a comment explaining why. |
 
@@ -63,6 +64,8 @@ C#のコード品質を劇的に高める静的アナライザーです。 NULL�
 本アナライザーは Visual Studio の「Live Code Analysis」と完全に統合されています。 プロジェクトを開くだけで、コードの編集時に自動的に解析が実行され、問題がある場合はリアルタイムで警告が表示されます。
 自動的に解析が実行されない場合は、リビルド、VS再起動、またはプロジェクトルートにある .vs フォルダー（隠しフォルダー）の削除を試してください。
 
+標準的なRoslynアナライザーとしてNuGetパッケージ経由で配布しているため、`dotnet build`・VS Code（C#拡張機能）・JetBrains Riderでも同様に動作します。
+
 ## コーディングスタイル
 
 本プロジェクトでは、コードスタイルを統一し、保守性を維持するために .editorconfig を採用しています。
@@ -73,10 +76,10 @@ C#のコード品質を劇的に高める静的アナライザーです。 NULL�
 
 デフォルトの警告レベルは設定済みですが、開発環境に合わせて .editorconfig で調整可能です。
 
-**例: COL001の警告を info に変更する**
-    dotnet_diagnostic.COL001.severity = warning
+**例: COLL001の警告を info に変更する**
+    dotnet_diagnostic.COLL001.severity = warning
     ↓
-    dotnet_diagnostic.COL001.severity = info
+    dotnet_diagnostic.COLL001.severity = info
 
 ## Rule List (ルール一覧)
 
@@ -88,11 +91,10 @@ C#のコード品質を劇的に高める静的アナライザーです。 NULL�
 | STR003 | 冗長なToString()呼び出しの削除によるコード最適化 | '{0}' は既にstring型です。冗長な '.ToString()' 呼び出しを削除してください。 |
 | LINQ001 | LINQ評価の統合によるパフォーマンス向上 | Where().{0}() のチェーンを、単一の '{0}(predicate)' に統合して最適化してください。 |
 | LINQ002 | 不要なコレクションの実体化の削除 | '{0}' は列挙後に再利用されていません。メモリ確保を回避するため、呼び出しを削除してください。 |
-| LINQ003 | コレクションの確定によるパフォーマンス向上 | '{0}' は複数回列挙されています。メモリを確保して結果を確定させることで、計算の重複を排除しパフォーマンスを向上させてください。 |
 | COLL001 | List初期キャパシティ指定によるメモリ削減 | ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。 |
 | COMM001 | ドキュメントコメント追加による可読性・保守性の向上 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
 | COMM002 | パラメータ同期による関数ヘッダーの整合性向上 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |
 | CPX001 | メソッドの複雑度削減による可読性の向上 | メソッド '{0}' の複雑度が {1} です（閾値: 17）。分割やリファクタリングを検討してください。 |
-| CPX002 | メソッド分割による保守性の向上 | メソッド '{0}' は {1} 行と長大です。関数呼び出しが {2} 回と少ないため、処理の分割を検討してください。 |
+| CPX002 | メソッド分割による保守性の向上 | メソッド '{0}' は {1} 行と長大です。関数呼び出しが {2} 回と少ないため、処理の分割（メソッド抽出）を検討してください。 |
 | COMP001 | 不等号演算子の向きの統一 | 可読性向上のため、不等号を反転させてください。 |
 | EXC001 | 例外処理の明確化による保守性向上 | '{0}' のcatchブロックが空です。処理を追加するか、意図的な場合はその理由をコメントで記述してください。 |
