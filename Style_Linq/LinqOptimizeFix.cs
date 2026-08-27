@@ -64,9 +64,14 @@ public class LinqOptimizeFix : CodeFixProvider
         // 大元（list）のレシーバーへすり替え
         var newMemberAccess = rightMemberAccess.WithExpression(leftMemberAccess.Expression);
 
+        // 引数リスト自体を丸ごと差し替えると、元の閉じ括弧（rightInvocation側）が持っていた
+        // 末尾トリビア（例: != の前のスペース）が失われるため、新しい閉じ括弧に引き継ぐ
+        var newArgumentList = whereArguments.WithCloseParenToken(
+            whereArguments.CloseParenToken.WithTrailingTrivia(rightInvocation.ArgumentList.CloseParenToken.TrailingTrivia));
+
         var newInvocation = rightInvocation
             .WithExpression(newMemberAccess)
-            .WithArgumentList(whereArguments);
+            .WithArgumentList(newArgumentList);
 
         // 構文木の置換結果を新しいルートとして返す
         var newRoot = root.ReplaceNode(rightInvocation, newInvocation);

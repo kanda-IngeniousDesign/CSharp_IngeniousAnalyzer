@@ -70,7 +70,6 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
     {
         context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
         context.EnableConcurrentExecution();
-
         context.RegisterSyntaxNodeAction(AnalyzeNode, TargetKinds);
     }
 

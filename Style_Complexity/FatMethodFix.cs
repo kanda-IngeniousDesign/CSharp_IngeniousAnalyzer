@@ -8,10 +8,13 @@ using Microsoft.CodeAnalysis.CSharp.Syntax;
 
 namespace CSharp_IngeniousAnalyzer.Style_Complexity;
 
-[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(MethodComplexityFix)), Shared]
-public class MethodComplexityFix : CodeFixProvider
+// CPX002自体（巨大メソッドの分割）を機械的に安全に行うFixは提供しない。
+// ここで提供するのは「// Ignore CPX002」コメントを挿入するFixのみで、
+// CPX001（MethodComplexityFix）と同じ考え方に基づく抑制専用の補助アクションである。
+[ExportCodeFixProvider(LanguageNames.CSharp, Name = nameof(FatMethodFix)), Shared]
+public class FatMethodFix : CodeFixProvider
 {
-    public sealed override ImmutableArray<string> FixableDiagnosticIds => [MethodComplexity.DiagnosticId];
+    public sealed override ImmutableArray<string> FixableDiagnosticIds => [FatMethod.DiagnosticId];
 
     public sealed override FixAllProvider GetFixAllProvider() => WellKnownFixAllProviders.BatchFixer;
 
@@ -23,13 +26,13 @@ public class MethodComplexityFix : CodeFixProvider
         var method = root.FindNodeAtSpan<MethodDeclarationSyntax>(context.Diagnostics.First().Location.SourceSpan);
         if (method is null) return;
 
-        var title = "Ignore : メソッドの複雑度チェックを無視する";
+        var title = "Ignore : メソッド分割チェックを無視する";
 
         context.RegisterCodeFix(
             CodeAction.Create(
                 title: title,
-                createChangedDocument: c => context.Document.InsertIgnoreCommentInMethodAsync(method, MethodComplexity.DiagnosticId, c),
-                equivalenceKey: "IgnoreMethodComplexity"),
+                createChangedDocument: c => context.Document.InsertIgnoreCommentInMethodAsync(method, FatMethod.DiagnosticId, c),
+                equivalenceKey: "IgnoreFatMethod"),
             context.Diagnostics.First());
     }
 }

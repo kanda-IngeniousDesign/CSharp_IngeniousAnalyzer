@@ -29,8 +29,8 @@ public class MethodComplexity : CommonAnalyzer
         var method = (MethodDeclarationSyntax)context.Node;
         if (method.Body == null) return;
 
-        // メソッドの先頭に `// Ignore` コメントがある場合はスキップ
-        if (HasIgnoreComment(method)) return;
+        // メソッドの先頭に `// Ignore CPX001` コメントがある場合はスキップ
+        if (method.HasIgnoreComment(DiagnosticId)) return;
 
         // セマンティックモデルを使って複雑度を算出
         var complexity = CalculateComplexity(method, context.SemanticModel);
@@ -40,51 +40,6 @@ public class MethodComplexity : CommonAnalyzer
             var diagnostic = Diagnostic.Create(Rule, method.Identifier.GetLocation(), method.Identifier.Text, complexity);
             context.ReportDiagnostic(diagnostic);
         }
-    }
-
-    /// <summary>
-    /// メソッド宣言の直前、またはボディの先頭に // Ignore コメントが存在するかを判定します
-    /// </summary>
-    private static bool HasIgnoreComment(MethodDeclarationSyntax method)
-    {
-        // 1. メソッド宣言自体に紐付く先行トリビアをチェック
-        foreach (var trivia in method.GetLeadingTrivia())
-        {
-            if (IsIgnoreCommentTrivia(trivia)) return true;
-        }
-
-        // 2. メソッドボディの最初のステートメントの先行トリビア、またはボディ直後のトリビアをチェック
-        if (method.Body != null)
-        {
-            foreach (var trivia in method.Body.GetLeadingTrivia())
-            {
-                if (IsIgnoreCommentTrivia(trivia)) return true;
-            }
-
-            var firstStmt = method.Body.Statements.FirstOrDefault();
-            if (firstStmt != null)
-            {
-                foreach (var trivia in firstStmt.GetLeadingTrivia())
-                {
-                    if (IsIgnoreCommentTrivia(trivia)) return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    /// <summary>
-    /// 指定されたトリビアが // Ignore であるかを判定します
-    /// </summary>
-    private static bool IsIgnoreCommentTrivia(SyntaxTrivia trivia)
-    {
-        if (trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) || trivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
-        {
-            var text = trivia.ToString().Trim();
-            return text.Equals("// Ignore CPX001", System.StringComparison.OrdinalIgnoreCase);
-        }
-        return false;
     }
 
     private static int CalculateComplexity(MethodDeclarationSyntax method, SemanticModel model)

@@ -3,7 +3,7 @@
 [![NuGet Downloads](https://img.shields.io/nuget/dt/CSharp_IngeniousAnalyzer.svg)](https://www.nuget.org/packages/CSharp_IngeniousAnalyzer/)
 [![NuGet Version](https://img.shields.io/nuget/v/CSharp_IngeniousAnalyzer.svg)](https://www.nuget.org/packages/CSharp_IngeniousAnalyzer/)
 
-A static analyzer designed to dramatically improve the code quality of your C# projects. It automatically detects issues such as insecure null checks, inefficient LINQ queries, and magic numbers, helping you maintain a safe and clean codebase.
+A static analyzer designed to dramatically improve the code quality of your C# projects. It automatically detects issues such as insecure null checks, inefficient LINQ queries, and overly complex methods, helping you maintain a safe and clean codebase.
 
 ## Feedback
 
@@ -30,6 +30,13 @@ Default warning levels are set, but you can adjust them to fit your development 
     dotnet_diagnostic.COLL001.severity = warning
     ↓
     dotnet_diagnostic.COLL001.severity = info
+
+CPX001 and CPX002 don't have a fix that rewrites the flagged method itself (a safe, 100%-accurate mechanical transformation can't be guaranteed). Instead, each provides a Quick Fix (light bulb) that inserts a `// Ignore <RuleId>` comment immediately before the target method (or right after the opening brace of its body), letting you intentionally suppress a specific occurrence (e.g. legacy code). You can also add this comment manually.
+
+```csharp
+// Ignore CPX001
+private void SomeComplexLegacyMethod() { ... }
+```
 
 ## Rule List
 
@@ -80,6 +87,13 @@ C#のコード品質を劇的に高める静的アナライザーです。 NULL�
     dotnet_diagnostic.COLL001.severity = warning
     ↓
     dotnet_diagnostic.COLL001.severity = info
+
+CPX001・CPX002は、警告対象のメソッド自体を書き換えるFixは提供していません（機械的に100%安全な変換を保証できないため）。代わりに、対象のメソッドの直前（またはメソッド本体の先頭）に `// Ignore <ルールID>` コメントを自動挿入するクイックフィックス（電球アイコン）を用意しているので、レガシーコード等の特定箇所を意図的に抑制できます。手動でコメントを追加しても構いません。
+
+```csharp
+// Ignore CPX001
+private void SomeComplexLegacyMethod() { ... }
+```
 
 ## Rule List (ルール一覧)
 

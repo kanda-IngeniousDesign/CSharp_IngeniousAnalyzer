@@ -6,8 +6,10 @@ using CSharp_IngeniousAnalyzer.Style__Common;
 
 namespace CSharp_IngeniousAnalyzer.Style_Complexity;
 
-// CPX002には自動修正（CodeFixProvider）を用意していない。
-// 巨大メソッドの分割は機械的に安全な変換が定義できず、100%の精度を保証できないため、手動での対応を前提としている。
+// 巨大メソッドの分割自体を行うCodeFixProviderは用意していない。
+// 機械的に安全な変換が定義できず、100%の精度を保証できないため、手動での対応を前提としている。
+// レガシーコード等で意図的に許容する場合は、CPX001と同様に "Ignore CPX002" のFix（FatMethodFix）を
+// 実行することで "// Ignore CPX002" コメントを自動挿入し、抑制できる。
 [DiagnosticAnalyzer(LanguageNames.CSharp)]
 public class FatMethod : CommonAnalyzer
 {
@@ -23,19 +25,14 @@ public class FatMethod : CommonAnalyzer
 
     protected override SyntaxKind[] TargetKinds => [SyntaxKind.MethodDeclaration];
 
-    public override void Initialize(AnalysisContext context)
-    {
-        context.ConfigureGeneratedCodeAnalysis(GeneratedCodeAnalysisFlags.None);
-        context.EnableConcurrentExecution();
-        context.RegisterSyntaxNodeAction(AnalyzeNode, TargetKinds);
-    }
-
     protected override void AnalyzeNode(SyntaxNodeAnalysisContext context)
     {
         if (IsGeneratedFile(context)) return;
 
         var method = (MethodDeclarationSyntax)context.Node;
         if (method.Body == null) return;
+
+        if (method.HasIgnoreComment(DiagnosticId)) return;
 
         var span = method.Body.GetLocation().GetLineSpan();
         int lineCount = span.EndLinePosition.Line - span.StartLinePosition.Line + 1;
