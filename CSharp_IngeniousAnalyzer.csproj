@@ -14,13 +14,15 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.1.1</Version>
+    <Version>3.1.2</Version>
 
     <PackageReleaseNotes>
-      - LINQ最適化Fix（Where→First/Last等）で、置換後にスペース等の書式が失われる不具合を修正
-      - CPX001/CPX002に「// Ignore」コメントを自動挿入するQuick Fixを追加し、意図的な抑制を容易に
-      - Fix LINQ optimize fix (Where→First/Last, etc.) losing surrounding whitespace after replacement
-      - Add Quick Fix to insert "// Ignore" comments for CPX001/CPX002, making intentional suppression easier
+      - NULL001: "null == null"/"null != null" を "null is null" に書き換えてコンパイルエラー(CS8117)になる不具合を修正し、この縮退ケースは検出対象外に
+      - LINQ002 (ToListToArrayDelete): コンストラクター内の不要な.ToList()が検出されない不具合を修正
+      - CPX001/CPX002のIgnore Quick Fix: 複数行コメント判定のデッドコードを削除し、改行コードをLF/CRLFに応じて自動判定するよう修正
+      - Fix NULL001 rewriting "null == null"/"null != null" into non-compiling "null is null" (CS8117); this degenerate case is no longer flagged
+      - Fix LINQ002 (ToListToArrayDelete) missing unnecessary .ToList() calls inside constructors
+      - Fix CPX001/CPX002 Ignore Quick Fix: removed dead multi-line-comment matching code and made the inserted comment's line ending match the file's (LF vs CRLF)
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>
