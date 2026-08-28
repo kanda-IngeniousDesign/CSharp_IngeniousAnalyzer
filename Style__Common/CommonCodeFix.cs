@@ -29,11 +29,12 @@ public static class CommonCodeFix
         else
         {
             var openBraceToken = method.Body.OpenBraceToken;
+            var newLine = DetectNewLine(openBraceToken.TrailingTrivia);
             var newOpenBraceToken = openBraceToken.WithTrailingTrivia(
                 openBraceToken.TrailingTrivia.AddRange(SyntaxFactory.TriviaList(
                     SyntaxFactory.Whitespace("    "),
                     SyntaxFactory.Comment($"// Ignore {diagnosticId}"),
-                    SyntaxFactory.EndOfLine("\r\n"))));
+                    SyntaxFactory.EndOfLine(newLine))));
 
             var newBody = method.Body.WithOpenBraceToken(newOpenBraceToken);
             newMethod = method.WithBody(newBody);
@@ -62,12 +63,25 @@ public static class CommonCodeFix
         }
 
         var indent = insertIndex < triviaArray.Length ? triviaArray[insertIndex].ToString() : string.Empty;
+        var newLine = DetectNewLine(existingLeadingTrivia);
 
         return SyntaxFactory.TriviaList(triviaArray.Take(insertIndex))
             .AddRange(SyntaxFactory.TriviaList(
                 SyntaxFactory.Whitespace(indent),
                 SyntaxFactory.Comment($"// Ignore {diagnosticId}"),
-                SyntaxFactory.EndOfLine("\r\n")))
+                SyntaxFactory.EndOfLine(newLine)))
             .AddRange(triviaArray.Skip(insertIndex));
+    }
+
+    /// <summary>
+    /// 既存トリビア中の改行コードを検出する。見つからない場合は "\r\n" にフォールバックする。
+    /// </summary>
+    private static string DetectNewLine(SyntaxTriviaList triviaList)
+    {
+        foreach (var trivia in triviaList)
+        {
+            if (trivia.IsKind(SyntaxKind.EndOfLineTrivia)) return trivia.ToString();
+        }
+        return "\r\n";
     }
 }

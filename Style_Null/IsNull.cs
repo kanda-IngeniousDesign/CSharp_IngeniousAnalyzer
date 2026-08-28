@@ -29,8 +29,9 @@ public class IsNull : CommonAnalyzer
         bool isLeftNull = binaryExpr.Left.IsKind(SyntaxKind.NullLiteralExpression);
         bool isRightNull = binaryExpr.Right.IsKind(SyntaxKind.NullLiteralExpression);
 
-        // 片方がnullリテラルであれば、もう片方が対象変数（name == null など）
-        if (isLeftNull || isRightNull)
+        // 片方だけがnullリテラルであれば、もう片方が対象変数（name == null など）
+        // 両辺がnullリテラルの場合（null == null）は「is null」パターンへ機械的に書き換えられないため対象外とする
+        if (isLeftNull ^ isRightNull)
         {
             // 警告（波線）を発生させる
             var diagnostic = Diagnostic.Create(Rule, binaryExpr.GetLocation(), "is null");

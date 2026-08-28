@@ -186,4 +186,412 @@ public class ListCapacityTests
 
         await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0), fixedSource);
     }
+
+    /// <summary>
+    /// List&lt;T&gt;以外の型（Dictionary等）を生成している場合、診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task NonListType_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    int max = 100;
+                    var dict = new Dictionary<string, int>();
+                    for (int i = 0; i < max; i++)
+                    {
+                        dict.Add(i.ToString(), i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// コンストラクタで既に初期キャパシティが指定されている場合、診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task CapacityAlreadySpecified_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    int max = 100;
+                    var list1 = new List<int>(max);
+                    for (int i = 0; i < max; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// コレクション初期化子を使用している場合、診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task CollectionInitializer_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    int max = 3;
+                    var list1 = new List<int> { 1, 2, 3 };
+                    for (int i = 0; i < max; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// リスト生成がローカル変数に代入されていない場合（引数への直接渡し等）、診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task NotAssignedToVariable_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    Process(new List<int>());
+                }
+
+                void Process(List<int> list) { }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// forループが存在せず、Add呼び出しのみでリストへ要素を追加している場合、診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task NoForLoopPresent_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    var list1 = new List<int>();
+                    list1.Add(1);
+                    list1.Add(2);
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 対象リストを使用しない無関係なforループが先行していても、正しいforループを発見して診断が出ることを確認する
+    /// </summary>
+    [Fact]
+    public async Task IrrelevantForLoopPresent_StillFindsCorrectLoop_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    for (int j = 0; j < 5; j++)
+                    {
+                        DoSomething(j);
+                    }
+
+                    int intMaxCount = 100;
+                    var list1 = {|#0:new List<string>()|};
+                    for (int i = 0; i < intMaxCount; i++)
+                    {
+                        list1.Add(i.ToString());
+                    }
+                }
+
+                void DoSomething(int x) { }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0));
+    }
+
+    /// <summary>
+    /// ループ条件が「以下（&lt;=）」の場合は現状未対応であり、診断が出ないことを確認する（境界値）
+    /// </summary>
+    [Fact]
+    public async Task LessOrEqualCondition_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    int max = 100;
+                    var list1 = new List<int>();
+                    for (int i = 0; i <= max; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// ループ上限がドット付きのメンバーアクセス（フィールド）の場合、診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task QualifiedFieldAccessBound_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class Config
+            {
+                public int MaxCount = 100;
+            }
+
+            public class C
+            {
+                void M(Config config)
+                {
+                    var list1 = new List<int>();
+                    for (int i = 0; i < config.MaxCount; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// ループ上限が整数リテラルの場合でも、診断が出ることを確認する
+    /// </summary>
+    [Fact]
+    public async Task LiteralIntegerBound_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    var list1 = {|#0:new List<int>()|};
+                    for (int i = 0; i < 100; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0));
+    }
+
+    /// <summary>
+    /// ループ上限がドット無しのフィールド（定数）の場合でも、診断が出ることを確認する
+    /// </summary>
+    [Fact]
+    public async Task FieldConstantBound_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                private const int MaxCount = 50;
+
+                void M()
+                {
+                    var list1 = {|#0:new List<int>()|};
+                    for (int i = 0; i < MaxCount; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0));
+    }
+
+    /// <summary>
+    /// ループ上限が整数リテラルの場合、Fixがそのリテラル値をキャパシティとして追加することを確認する
+    /// </summary>
+    [Fact]
+    public async Task Fix_AddsCapacityArgument_WithLiteralBound()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    var list1 = {|#0:new List<int>()|};
+                    for (int i = 0; i < 100; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    var list1 = new List<int>(100);
+                    for (int i = 0; i < 100; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0), fixedSource);
+    }
+
+    /// <summary>
+    /// ループ上限がフィールド（定数）の場合、Fixがそのフィールド名をキャパシティとして追加することを確認する
+    /// </summary>
+    [Fact]
+    public async Task Fix_AddsCapacityArgument_WithFieldBound()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                private const int MaxCount = 50;
+
+                void M()
+                {
+                    var list1 = {|#0:new List<int>()|};
+                    for (int i = 0; i < MaxCount; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                private const int MaxCount = 50;
+
+                void M()
+                {
+                    var list1 = new List<int>(MaxCount);
+                    for (int i = 0; i < MaxCount; i++)
+                    {
+                        list1.Add(i);
+                    }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0), fixedSource);
+    }
+
+    /// <summary>
+    /// 対象リストを使用しない無関係なforループが先行していても、Fixが正しいforループの上限値を採用することを確認する
+    /// </summary>
+    [Fact]
+    public async Task Fix_MultipleForLoops_PicksCorrectLoop()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    for (int j = 0; j < 5; j++)
+                    {
+                        DoSomething(j);
+                    }
+
+                    int intMaxCount = 100;
+                    var list1 = {|#0:new List<string>()|};
+                    for (int i = 0; i < intMaxCount; i++)
+                    {
+                        list1.Add(i.ToString());
+                    }
+                }
+
+                void DoSomething(int x) { }
+            }
+            """;
+
+        var fixedSource = """
+            using System.Collections.Generic;
+
+            public class C
+            {
+                void M()
+                {
+                    for (int j = 0; j < 5; j++)
+                    {
+                        DoSomething(j);
+                    }
+
+                    int intMaxCount = 100;
+                    var list1 = new List<string>(intMaxCount);
+                    for (int i = 0; i < intMaxCount; i++)
+                    {
+                        list1.Add(i.ToString());
+                    }
+                }
+
+                void DoSomething(int x) { }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0), fixedSource);
+    }
 }

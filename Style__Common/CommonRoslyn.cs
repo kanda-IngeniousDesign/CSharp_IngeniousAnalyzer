@@ -48,7 +48,7 @@ public static class CommonRoslyn
 
     private static bool IsIgnoreCommentTrivia(SyntaxTrivia trivia, string diagnosticId)
     {
-        if (!trivia.IsKind(SyntaxKind.SingleLineCommentTrivia) && !trivia.IsKind(SyntaxKind.MultiLineCommentTrivia))
+        if (!trivia.IsKind(SyntaxKind.SingleLineCommentTrivia))
         {
             return false;
         }

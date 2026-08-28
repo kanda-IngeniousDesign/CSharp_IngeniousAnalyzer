@@ -312,4 +312,138 @@ public class EmptyCatchTests
 
         await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("InvalidOperationException"), fixedSource);
     }
+
+    /// <summary>
+    /// 閉じ括弧の手前に複数行コメント（/* ... */）がある場合も、「意図的に何もしない」とみなされ診断が出ないことを確認する
+    /// （HasCommentのMultiLineCommentTrivia判定を実際に通す）
+    /// </summary>
+    [Fact]
+    public async Task MultiLineCommentBeforeClosingBrace_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("L");
+                    }
+                    catch
+                    {
+                        /* 何もしない */
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 閉じ括弧の手前に単一行XMLドキュメントコメント（///）がある場合も、「意図的に何もしない」とみなされ診断が出ないことを確認する
+    /// （HasCommentのSingleLineDocumentationCommentTrivia判定を実際に通す）
+    /// </summary>
+    [Fact]
+    public async Task SingleLineDocCommentBeforeClosingBrace_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("M");
+                    }
+                    catch
+                    {
+                        /// 何もしない
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 閉じ括弧の手前に複数行XMLドキュメントコメント（/** ... */）がある場合も、「意図的に何もしない」とみなされ診断が出ないことを確認する
+    /// （HasCommentのMultiLineDocumentationCommentTrivia判定を実際に通す）
+    /// </summary>
+    [Fact]
+    public async Task MultiLineDocCommentBeforeClosingBrace_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("N");
+                    }
+                    catch
+                    {
+                        /** 何もしない */
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// CRLF改行のソースに対してFixを適用した場合、挿入するTODOコメントの改行もCRLFのまま維持されることを確認する
+    /// （EmptyCatchFixの改行コード判定 `textStr.Contains("\r\n")` のtrue分岐を通す）
+    /// </summary>
+    [Fact]
+    public async Task Fix_WithCrlfLineEndings_PreservesCrlfForInsertedComment()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("A");
+                    }
+                    {|#0:catch|} (InvalidOperationException)
+                    {
+                    }
+                }
+            }
+            """.ReplaceLineEndings("\r\n");
+
+        var fixedSource = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("A");
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // TODO: 例外処理を検討してください
+                    }
+                }
+            }
+            """.ReplaceLineEndings("\r\n");
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("InvalidOperationException"), fixedSource);
+    }
 }

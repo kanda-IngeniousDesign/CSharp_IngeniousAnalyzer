@@ -200,6 +200,11 @@ public class ToListToArrayDelete : CommonAnalyzer
                 methodBody = localFunc.Body;
                 break;
             }
+            if (current is ConstructorDeclarationSyntax ctorDecl)
+            {
+                methodBody = ctorDecl.Body;
+                break;
+            }
             current = current.Parent;
         }
 

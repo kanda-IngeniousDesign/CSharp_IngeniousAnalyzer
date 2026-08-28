@@ -205,4 +205,296 @@ public class ToListToArrayDeleteTests
 
         await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 1 < n).Select(n => n * 2).OrderBy(n => n)"), fixedSource);
     }
+
+    /// <summary>
+    /// System.Linq.Enumerable 以外の型が独自に定義した ToList() メソッドは対象外であり警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task CustomTypeToListMethod_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+
+            public class MyCollection
+            {
+                public List<int> ToList() => new List<int>();
+            }
+
+            public class C
+            {
+                void M(MyCollection custom)
+                {
+                    var items = custom.ToList();
+                    foreach (var item in items) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// ToHashSet() など ToList/ToArray 以外の Enumerable マテリアライズ メソッドは対象外であり警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task ToHashSetMaterialization_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var items = srcList.Where(n => 0 < n).ToHashSet();
+                    foreach (var item in items) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 変数に代入せず式ステートメントとして結果を破棄している場合は変数宣言子が見つからず警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task StandaloneStatementResultDiscarded_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    srcList.Where(n => 0 < n).ToList();
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 明示的な型（List&lt;int&gt;）で宣言され ToList() を除去すると暗黙的に変換できなくなる場合は警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task ExplicitListType_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    List<int> items = srcList.Where(n => 0 < n).ToList();
+                    foreach (var item in items) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 明示的な型（IEnumerable&lt;int&gt;）で宣言されていても ToList() を除去して暗黙的に代入できる場合は警告することを確認する
+    /// </summary>
+    [Fact]
+    public async Task ExplicitInterfaceType_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    IEnumerable<int> items = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                    foreach (var item in items) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
+
+    /// <summary>
+    /// プロパティの get アクセサー内で1回だけ foreach 参照される場合も警告することを確認する
+    /// </summary>
+    [Fact]
+    public async Task PropertyGetterAccessor_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                List<int> srcList = new List<int>();
+
+                int Count
+                {
+                    get
+                    {
+                        var filtered = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                        int total = 0;
+                        foreach (var item in filtered) { total++; }
+                        return total;
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
+
+    /// <summary>
+    /// ローカル関数内で1回だけ foreach 参照される場合も警告することを確認する
+    /// </summary>
+    [Fact]
+    public async Task LocalFunctionBody_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    void Local()
+                    {
+                        var filtered = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                        foreach (var item in filtered) { }
+                    }
+                    Local();
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
+
+    /// <summary>
+    /// フィールド初期化子で ToList() を使用している場合はメソッド本体が特定できず警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task FieldInitializer_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                private static List<int> Source = new List<int> { 1, 2, 3 };
+                private static IEnumerable<int> Filtered = Source.Where(n => 0 < n).ToList();
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// コンストラクター内で通常のメソッドと同じパターンを使っている場合も、メソッド本体と同様に警告することを確認する
+    /// （HasSingleSafeForEachReference が ConstructorDeclarationSyntax も本体スコープとして認識する）
+    /// </summary>
+    [Fact]
+    public async Task ConstructorBody_ReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                List<int> srcList;
+
+                public C(List<int> input)
+                {
+                    srcList = input;
+                    var filtered = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                    foreach (var item in filtered) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
+
+    /// <summary>
+    /// 確定した変数が foreach 以外（return文など）で1回だけ参照される場合は警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task VariableReturnedNotForEach_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                List<int> M(List<int> srcList)
+                {
+                    var filtered = srcList.Where(n => 0 < n).ToList();
+                    return filtered;
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 確定した変数が宣言後に一度も参照されない場合は警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task VariableDeclaredButNeverUsed_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var filtered = srcList.Where(n => 0 < n).ToList();
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// null条件演算子（?.）経由で ToList() を呼び出す場合、invocation.Expression が MemberAccessExpressionSyntax
+    /// ではなく MemberBindingExpressionSyntax となるため、レシーバー名が取得できず引数が "expression" に
+    /// フォールバックすることを確認する
+    /// </summary>
+    [Fact]
+    public async Task NullConditionalToList_ReportsDiagnosticWithFallbackName()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int>? srcList)
+                {
+                    var items = srcList?{|#0:.ToList()|};
+                    foreach (var item in items) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("expression"));
+    }
 }

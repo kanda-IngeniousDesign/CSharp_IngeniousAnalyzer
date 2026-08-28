@@ -294,4 +294,47 @@ public class RedundantToStringTests
 
         await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("s4"), fixedSource);
     }
+
+    /// <summary>
+    /// 冗長なToString()呼び出しがメソッド引数へ直接渡されている場合（例: Foo(s.ToString())）でも
+    /// Fixが正しく登録・適用されることを確認する回帰テスト。
+    /// この場合、呼び出し自体のスパンが引数(ArgumentSyntax)のスパンと完全に一致（タイ）するため、
+    /// FindNodeにgetInnermostNodeForTie: trueを渡していないとFixが（例外を投げずに）
+    /// 静かに登録されなくなる不具合があった。
+    /// </summary>
+    [Fact]
+    public async Task Fix_RemovesRedundantToString_WhenPassedAsBareMethodArgument()
+    {
+        var test = """
+            #nullable enable
+
+            public class C
+            {
+                void Foo(string value) { }
+
+                void M()
+                {
+                    string s1 = "abc";
+                    Foo({|#0:s1.ToString()|});
+                }
+            }
+            """;
+
+        var fixedSource = """
+            #nullable enable
+
+            public class C
+            {
+                void Foo(string value) { }
+
+                void M()
+                {
+                    string s1 = "abc";
+                    Foo(s1);
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("s1"), fixedSource);
+    }
 }

@@ -109,6 +109,26 @@ public class IsNullTests
     }
 
     /// <summary>
+    /// 両辺がnullリテラル（null == null）の場合は「is null」パターンへ機械的に書き換えられないため、
+    /// 診断が出ないことを確認する（境界値：isLeftNull/isRightNullが両方trueになるケース）
+    /// </summary>
+    [Fact]
+    public async Task BothNullLiterals_DoesNotReportDiagnostic()
+    {
+        var test = """
+            public class C
+            {
+                void M()
+                {
+                    if (null == null) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
     /// .Equals(null) は == / != の構文ではないため、対象外（誤検知しない）ことを確認する
     /// </summary>
     [Fact]
@@ -120,6 +140,25 @@ public class IsNullTests
                 void M(string s)
                 {
                     if (s.Equals(null)) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// nullリテラルを含まない等価比較（a == b）では、isLeftNull/isRightNullが共にfalseとなり診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task NonNullComparison_DoesNotReportDiagnostic()
+    {
+        var test = """
+            public class C
+            {
+                void M(string a, string b)
+                {
+                    if (a == b) { }
                 }
             }
             """;
@@ -168,6 +207,66 @@ public class IsNullTests
                 void M(string s)
                 {
                     if ({|#0:s != null|}) { }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            public class C
+            {
+                void M(string s)
+                {
+                    if (s is not null) { }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("is null"), fixedSource);
+    }
+
+    /// <summary>
+    /// ヨーダ記法（null == s）でも、Fixが対象変数側を正しく特定して「is null」パターンへ書き換えることを確認する
+    /// （isLeftNullがtrueとなり、targetExpressionがRight側から採られる分岐を検証）
+    /// </summary>
+    [Fact]
+    public async Task Fix_ReplacesYodaEqualsNullWithIsNullPattern()
+    {
+        var test = """
+            public class C
+            {
+                void M(string s)
+                {
+                    if ({|#0:null == s|}) { }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            public class C
+            {
+                void M(string s)
+                {
+                    if (s is null) { }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("is null"), fixedSource);
+    }
+
+    /// <summary>
+    /// ヨーダ記法（null != s）でも、Fixが対象変数側を正しく特定して「is not null」パターンへ書き換えることを確認する
+    /// （isLeftNullがtrueとなる分岐を、EqualsExpression以外のケースでも検証）
+    /// </summary>
+    [Fact]
+    public async Task Fix_ReplacesYodaNotEqualsNullWithIsNotNullPattern()
+    {
+        var test = """
+            public class C
+            {
+                void M(string s)
+                {
+                    if ({|#0:null != s|}) { }
                 }
             }
             """;

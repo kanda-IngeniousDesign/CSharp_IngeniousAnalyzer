@@ -235,4 +235,151 @@ public class StringEmptyTests
 
         await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("String.Empty"), fixedSource);
     }
+
+    /// <summary>
+    /// 完全修飾名（System.String.Empty）は、Expressionが単純な識別子「String」ではないため
+    /// 検知対象外（誤検知しない）ことを確認する
+    /// </summary>
+    [Fact]
+    public async Task QualifiedSystemStringEmpty_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M(string s)
+                {
+                    if (s == System.String.Empty) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 「String」以外の識別子が持つ「Empty」というメンバー（自作クラスのstaticフィールド等）は
+    /// 検知対象外（誤検知しない）ことを確認する
+    /// </summary>
+    [Fact]
+    public async Task CustomClassMemberNamedEmpty_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System;
+
+            public class Wrapper
+            {
+                public static string Empty = "";
+            }
+
+            public class C
+            {
+                void M(string s)
+                {
+                    if (s == Wrapper.Empty) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// メンバー名が「Empty」ではないメンバーアクセス（例：StringBuilder.Length）は
+    /// 検知対象外（誤検知しない）ことを確認する
+    /// </summary>
+    [Fact]
+    public async Task MemberAccessWithDifferentName_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Text;
+
+            public class C
+            {
+                void M(StringBuilder sb)
+                {
+                    if (sb.Length == 0) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 括弧で囲まれた「(String.Empty)」は、MemberAccessExpressionSyntaxとして直接現れないため
+    /// 検知対象外（誤検知しない）ことを確認する
+    /// </summary>
+    [Fact]
+    public async Task ParenthesizedStringEmpty_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M(string s)
+                {
+                    if ((String.Empty) == s) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 両辺とも大文字「String.Empty」の場合、左辺側のみが診断されることを確認する（境界値）
+    /// </summary>
+    [Fact]
+    public async Task BothSidesStringEmpty_ReportsOnlyOnLeftSide()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    if ({|#0:String.Empty|} == String.Empty) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("String.Empty"));
+    }
+
+    /// <summary>
+    /// != 演算子のケースでも、Fixが正しく小文字 string.Empty へ書き換えることを確認する
+    /// </summary>
+    [Fact]
+    public async Task Fix_ReplacesNotEqualsWithLowercase()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M(string s)
+                {
+                    if (s != {|#0:String.Empty|}) { }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            using System;
+
+            public class C
+            {
+                void M(string s)
+                {
+                    if (s != string.Empty) { }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("String.Empty"), fixedSource);
+    }
 }

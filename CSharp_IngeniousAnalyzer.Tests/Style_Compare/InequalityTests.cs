@@ -325,4 +325,119 @@ public class InequalityTests
 
         await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0), fixedSource);
     }
+
+    /// <summary>
+    /// リテラルが右辺にある比較（a &gt; 5）でも、演算子が'&gt;'であれば診断が出ることを確認する
+    /// （本ルールは左右のオペランド種別を判定せず、演算子の種類のみで診断するため）
+    /// </summary>
+    [Fact]
+    public async Task LiteralOnRightGreaterThan_ReportsDiagnostic()
+    {
+        var test = """
+            public class C
+            {
+                void M(int a)
+                {
+                    if ({|#0:a > 5|}) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0));
+    }
+
+    /// <summary>
+    /// リテラルが右辺にある比較（b &gt;= 10）でも、演算子が'&gt;='であれば診断が出ることを確認する
+    /// </summary>
+    [Fact]
+    public async Task LiteralOnRightGreaterThanOrEqual_ReportsDiagnostic()
+    {
+        var test = """
+            public class C
+            {
+                void M(int b)
+                {
+                    if ({|#0:b >= 10|}) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0));
+    }
+
+    /// <summary>
+    /// フィールド参照が左辺にある向き違反（FieldValue &gt;= a）でも診断が出ることを確認する
+    /// （FieldLessThanVariable_DoesNotReportDiagnosticと対になる、'&gt;='側の境界値テスト）
+    /// </summary>
+    [Fact]
+    public async Task FieldGreaterThanOrEqualVariable_ReportsDiagnostic()
+    {
+        var test = """
+            public class C
+            {
+                private int FieldValue = 10;
+
+                void M(int a)
+                {
+                    if ({|#0:FieldValue >= a|}) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0));
+    }
+
+    /// <summary>
+    /// Fixが、リテラルが右辺にある「a &gt; 5」を左右反転して「5 &lt; a」へ書き換えることを確認する
+    /// </summary>
+    [Fact]
+    public async Task Fix_ReversesLiteralOnRightGreaterThan()
+    {
+        var test = """
+            public class C
+            {
+                void M(int a)
+                {
+                    if ({|#0:a > 5|}) { }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            public class C
+            {
+                void M(int a)
+                {
+                    if (5 < a) { }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0), fixedSource);
+    }
+
+    /// <summary>
+    /// 自動生成ファイル（*.Designer.cs）内のコードは、IsGeneratedFileガードにより
+    /// 「a &gt; b」のような向き違反があっても診断が出ないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task GeneratedFile_DoesNotReportDiagnostic()
+    {
+        var test = """
+            public class C
+            {
+                void M(int a, int b)
+                {
+                    if (a > b) { }
+                }
+            }
+            """;
+
+        var verifier = new CSharpAnalyzerTest<Inequality, XUnitVerifier>
+        {
+            TestState = { Sources = { ("Test0.Designer.cs", test) } },
+        };
+
+        await verifier.RunAsync();
+    }
 }
