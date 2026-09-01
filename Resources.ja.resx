@@ -44,4 +44,7 @@
   <data name="STR003_Title"><value>冗長なToString()呼び出しの削除によるコード最適化</value></data>
   <data name="STR003_Message"><value>'{0}' は既にstring型です。冗長な '.ToString()' 呼び出しを削除してください。</value></data>
 
+  <data name="EXC002_Title"><value>再スロー時のスタックトレース保持</value></data>
+  <data name="EXC002_Message"><value>'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。</value></data>
+
 </root>

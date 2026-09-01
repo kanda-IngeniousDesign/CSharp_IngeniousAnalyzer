@@ -55,7 +55,9 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         // Style_Exception
         EXC001_Title,
-        EXC001_Message
+        EXC001_Message,
+        EXC002_Title,
+        EXC002_Message
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)

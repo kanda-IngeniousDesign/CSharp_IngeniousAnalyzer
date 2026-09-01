@@ -55,6 +55,7 @@ private void SomeComplexLegacyMethod() { ... }
 | CPX002 | Improve maintainability by splitting long methods | Method '{0}' has {1} lines of code but only {2} method invocations. Please consider refactoring by extracting logic into smaller methods. |
 | COMP001 | Standardization of inequality operator direction | Please reverse the inequality signs to improve readability. |
 | EXC001 | Improved maintainability by clarifying exception handling | The catch block for '{0}' is empty. Add handling, or if this is intentional, leave a comment explaining why. |
+| EXC002 | Preserve the stack trace when rethrowing exceptions | Use 'throw;' instead of 'throw {0};' to preserve the original stack trace. |
 
 ---
 
@@ -112,3 +113,4 @@ private void SomeComplexLegacyMethod() { ... }
 | CPX002 | メソッド分割による保守性の向上 | メソッド '{0}' は {1} 行と長大です。関数呼び出しが {2} 回と少ないため、処理の分割（メソッド抽出）を検討してください。 |
 | COMP001 | 不等号演算子の向きの統一 | 可読性向上のため、不等号を反転させてください。 |
 | EXC001 | 例外処理の明確化による保守性向上 | '{0}' のcatchブロックが空です。処理を追加するか、意図的な場合はその理由をコメントで記述してください。 |
+| EXC002 | 再スロー時のスタックトレース保持 | 'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。 |

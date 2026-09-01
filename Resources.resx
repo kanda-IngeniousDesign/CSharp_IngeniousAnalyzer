@@ -43,4 +43,7 @@
 
   <data name="STR003_Title"><value>Code optimization by removing redundant ToString() calls</value></data>
   <data name="STR003_Message"><value>'{0}' is already a string. Remove the redundant '.ToString()' call.</value></data>
+
+  <data name="EXC002_Title"><value>Preserve the stack trace when rethrowing exceptions</value></data>
+  <data name="EXC002_Message"><value>Use 'throw;' instead of 'throw {0};' to preserve the original stack trace.</value></data>
 </root>

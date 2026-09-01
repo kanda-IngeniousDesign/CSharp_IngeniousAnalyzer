@@ -27,8 +27,9 @@ dotnet_diagnostic.CPX002.severity = warning
 # --- Compare Rules (Inequality operator direction) ---
 dotnet_diagnostic.COMP001.severity = warning
 
-# --- Exception Rules (Empty catch block) ---
+# --- Exception Rules (Empty catch block, rethrow losing stack trace) ---
 dotnet_diagnostic.EXC001.severity = warning
+dotnet_diagnostic.EXC002.severity = warning
 
 # IDE0130: Namespace がフォルダー構造と一致しません
 dotnet_diagnostic.IDE0130.severity = error
