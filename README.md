@@ -38,6 +38,8 @@ CPX001 and CPX002 don't have a fix that rewrites the flagged method itself (a sa
 private void SomeComplexLegacyMethod() { ... }
 ```
 
+LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the corresponding `foreach` loop body calls any method on the original source collection (e.g. `Remove`, `Add`). Removing the materialization in that case would make the loop enumerate and mutate the same collection at once, causing a runtime `InvalidOperationException`; the `.ToList()`/`.ToArray()` there is very likely an intentional snapshot, not unnecessary allocation.
+
 ## Rule List
 
 | ID | Title | Message |
@@ -95,6 +97,8 @@ CPX001・CPX002は、警告対象のメソッド自体を書き換えるFixは�
 // Ignore CPX001
 private void SomeComplexLegacyMethod() { ... }
 ```
+
+LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレクションに対するメソッド呼び出し（`Remove`、`Add`等）がある場合、`.ToList()`/`.ToArray()`を警告・自動修正しません。その状況で実体化を取り除くと、同じコレクションを列挙しながら変更することになり実行時に`InvalidOperationException`が発生してしまうため、その`.ToList()`/`.ToArray()`は不要なメモリ確保ではなく意図的なスナップショットである可能性が高いと判断しています。
 
 ## Rule List (ルール一覧)
 

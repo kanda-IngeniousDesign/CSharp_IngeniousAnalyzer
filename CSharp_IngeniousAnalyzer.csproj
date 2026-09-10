@@ -14,11 +14,11 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.2.0</Version>
+    <Version>3.2.1</Version>
 
     <PackageReleaseNotes>
-      - EXC002を追加: catch句の例外変数をそのまま再スローする "throw ex;" を検知し、スタックトレースを保持する "throw;" へのFixを提供
-      - Add EXC002: detect "throw ex;" (rethrowing the caught exception variable directly), which resets the stack trace, and offer a Fix to "throw;" that preserves it
+      - LINQ002 (ToListToArrayDelete): foreachループ本体が列挙元コレクション自体をRemove/Add等で変更している場合、.ToList()/.ToArray()を誤って不要と判定しFixで削除してしまう不具合を修正（削除すると列挙中の変更でInvalidOperationExceptionが発生する）
+      - Fix LINQ002 (ToListToArrayDelete) incorrectly flagging and removing a .ToList()/.ToArray() call whose corresponding foreach loop body mutates the original source collection (e.g. via Remove/Add); removing it would cause a runtime InvalidOperationException from mutating a collection during enumeration
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>

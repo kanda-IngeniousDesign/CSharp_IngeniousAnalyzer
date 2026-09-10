@@ -33,7 +33,7 @@ public class ToListToArrayDelete : CommonAnalyzer
         }
 
         // foreach直接、または安全性が証明できる変数経由のどちらかであれば警告する
-        bool isRedundant = IsDirectForEachUsage(invocation) || 
+        bool isRedundant = IsDirectForEachUsage(invocation, model, context.CancellationToken) ||
                            IsRedundantVariableAssignment(invocation, model, context.CancellationToken);
 
         if (isRedundant)
@@ -65,11 +65,23 @@ public class ToListToArrayDelete : CommonAnalyzer
     }
 
     /// <summary>
-    /// foreach ステートメントの式として直接使用されているかを判定します
+    /// foreach ステートメントの式として直接使用されており、かつそのループ本体で
+    /// 列挙元のコレクションを変更（Remove/Add等）していないかを判定します
     /// </summary>
-    private static bool IsDirectForEachUsage(InvocationExpressionSyntax invocation)
+    private static bool IsDirectForEachUsage(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken cancellationToken)
     {
-        return invocation.Parent is ForEachStatementSyntax forEach && forEach.Expression == invocation;
+        if (invocation.Parent is not ForEachStatementSyntax forEach || forEach.Expression != invocation)
+        {
+            return false;
+        }
+
+        // ここに到達する時点で invocation.Expression は必ず MemberAccessExpressionSyntax になる
+        // （ToList/ToArrayは拡張メソッドのためドット構文以外で呼び出せず、null条件演算子(?.)経由の
+        // 場合はinvocation.ParentがConditionalAccessExpressionSyntaxになり上のガードで弾かれる）。
+        // そのためrootSymbolが実際にnullになることはないが、HasSingleSafeForEachReference側との
+        // 対称性のため防御的にnullチェックしておく
+        var rootSymbol = GetChainRootSymbol(invocation, model, cancellationToken);
+        return rootSymbol == null || !ForEachBodyMutatesSymbol(forEach, rootSymbol, model, cancellationToken);
     }
 
     /// <summary>
@@ -251,7 +263,60 @@ public class ToListToArrayDelete : CommonAnalyzer
             }
         }
 
-        return nonAssignmentRefCount == 1 && foundForEach != null;
+        if (nonAssignmentRefCount != 1 || foundForEach == null)
+        {
+            return false;
+        }
+
+        // 変数経由であっても、ToList/ToArray の元になった列挙元（Where等の受け手）自体を
+        // foreachループ本体内で変更（Remove/Add等）している場合は、列挙中の変更を避けるための
+        // 意図的なスナップショットである可能性が高いため警告しない
+        var rootSymbol = GetChainRootSymbol(invocation, model, cancellationToken);
+        return rootSymbol == null || !ForEachBodyMutatesSymbol(foundForEach, rootSymbol, model, cancellationToken);
+    }
+
+    /// <summary>
+    /// LINQ チェーンの起点となる、列挙元の式のシンボルを取得します（例: srcList.Where(...).ToList() の srcList）
+    /// 単純なメンバーアクセスチェーン以外（null条件演算子など）は解決できず null を返すことがあります
+    /// </summary>
+    private static ISymbol? GetChainRootSymbol(InvocationExpressionSyntax invocation, SemanticModel model, CancellationToken cancellationToken)
+    {
+        if (invocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+        {
+            return null;
+        }
+
+        ExpressionSyntax current = memberAccess.Expression;
+        while (current is InvocationExpressionSyntax innerInvocation && innerInvocation.Expression is MemberAccessExpressionSyntax innerMemberAccess)
+        {
+            current = innerMemberAccess.Expression;
+        }
+
+        return model.GetSymbolInfo(current, cancellationToken).Symbol;
+    }
+
+    /// <summary>
+    /// foreach ループ本体の中で、指定したシンボルに対するメソッド呼び出し（Remove/Add等）が
+    /// 行われていないかを判定します。メソッド名では判定せず、同一シンボルへの呼び出しであれば
+    /// 保守的に「変更の可能性あり」とみなします（列挙中の変更による実行時例外を避けるため）
+    /// </summary>
+    private static bool ForEachBodyMutatesSymbol(ForEachStatementSyntax forEachStmt, ISymbol rootSymbol, SemanticModel model, CancellationToken cancellationToken)
+    {
+        foreach (var innerInvocation in forEachStmt.Statement.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+        {
+            if (innerInvocation.Expression is not MemberAccessExpressionSyntax memberAccess)
+            {
+                continue;
+            }
+
+            var receiverSymbol = model.GetSymbolInfo(memberAccess.Expression, cancellationToken).Symbol;
+            if (SymbolEqualityComparer.Default.Equals(receiverSymbol, rootSymbol))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>

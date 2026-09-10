@@ -497,4 +497,118 @@ public class ToListToArrayDeleteTests
 
         await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("expression"));
     }
+
+    /// <summary>
+    /// 変数経由で ToList() を確定させ、foreach ループ本体の中で列挙元のコレクション自体から
+    /// Remove している場合は警告しないことを確認する。
+    /// ToList() を除去すると、列挙中に列挙元を変更したことになり実行時に
+    /// InvalidOperationException（コレクションが変更されました）が発生してしまうため、
+    /// この ToList() は不要な確定ではなく意図的なスナップショットである
+    /// </summary>
+    [Fact]
+    public async Task LoopRemovesFromSourceViaVariable_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var filtered = srcList.Where(n => 0 < n).ToList();
+                    foreach (var item in filtered)
+                    {
+                        srcList.Remove(item);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 変数を経由せず foreach の式に直接 ToList() を書いている場合でも、
+    /// ループ本体で列挙元を変更していれば警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task LoopRemovesFromSourceDirectForEach_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    foreach (var item in srcList.Where(n => 0 < n).ToList())
+                    {
+                        srcList.Remove(item);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// foreach ループ本体で列挙元とは無関係な別のコレクションを変更しているだけの場合は、
+    /// 従来どおり警告することを確認する（変更検知が無関係なレシーバーまで巻き込んで
+    /// 過剰に安全側へ倒れていないことの確認）
+    /// </summary>
+    [Fact]
+    public async Task LoopMutatesUnrelatedCollection_StillReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList, List<int> unrelated)
+                {
+                    var filtered = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                    foreach (var item in filtered)
+                    {
+                        unrelated.Add(item);
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
+
+    /// <summary>
+    /// foreach ループ本体内の呼び出しが、同一クラスのメソッドを暗黙のthisで呼び出す形
+    /// （メンバーアクセス式ではなく単純な識別子）である場合、変更検知の対象外として
+    /// スキップしつつも、通常どおり警告することを確認する
+    /// </summary>
+    [Fact]
+    public async Task LoopCallsLocalMethodWithoutMemberAccess_StillReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var filtered = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                    foreach (var item in filtered)
+                    {
+                        Process(item);
+                    }
+                }
+
+                void Process(int item) { }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
 }
