@@ -46,10 +46,16 @@ public class EmptyCatchFix : CodeFixProvider
         var textStr = sourceText.ToString();
         var newLine = textStr.Contains("\r\n") ? "\r\n" : "\n";
 
-        var insertPosition = catchClause.Block.OpenBraceToken.Span.End;
-        var comment = $"{newLine}{innerIndent}// TODO: 例外処理を検討してください";
+        // 開き括弧と閉じ括弧の間（単一行 "{ }" の場合は空白のみ、複数行の場合は改行+インデント）を
+        // まるごと置き換えることで、既存の書式に関わらず閉じ括弧が確実に独立した行に来るようにする。
+        // ゼロ幅挿入だと、単一行の "catch (Exception ex) { }" のようなケースで閉じ括弧がTODOコメントに
+        // 巻き込まれ、コメントアウトされてしまう（コンパイルエラーになる）ため。
+        var openBrace = catchClause.Block.OpenBraceToken;
+        var closeBrace = catchClause.Block.CloseBraceToken;
+        var replaceSpan = TextSpan.FromBounds(openBrace.Span.End, closeBrace.SpanStart);
+        var comment = $"{newLine}{innerIndent}// TODO: 例外処理を検討してください{newLine}{baseIndent}";
 
-        var textChange = new TextChange(new TextSpan(insertPosition, 0), comment);
+        var textChange = new TextChange(replaceSpan, comment);
         return document.WithText(sourceText.WithChanges(textChange));
     }
 }

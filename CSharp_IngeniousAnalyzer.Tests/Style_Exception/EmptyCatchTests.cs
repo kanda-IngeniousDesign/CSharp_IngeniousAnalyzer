@@ -314,6 +314,51 @@ public class EmptyCatchTests
     }
 
     /// <summary>
+    /// 開き括弧と閉じ括弧が同じ行にある単一行の空catch（catch (Exception ex) { }）にFixを適用した場合、
+    /// 閉じ括弧がTODOコメントに巻き込まれず独立した行に分離されることを確認する
+    /// （ゼロ幅挿入だった旧実装では、閉じ括弧が "// TODO: ... }" のようにコメント化されコンパイルエラーになっていた）
+    /// </summary>
+    [Fact]
+    public async Task Fix_WithSingleLineEmptyCatchBlock_SeparatesClosingBraceOntoOwnLine()
+    {
+        var test = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("A");
+                    }
+                    {|#0:catch|} (InvalidOperationException) { }
+                }
+            }
+            """;
+
+        var fixedSource = """
+            using System;
+
+            public class C
+            {
+                void M()
+                {
+                    try
+                    {
+                        Console.WriteLine("A");
+                    }
+                    catch (InvalidOperationException) {
+                        // TODO: 例外処理を検討してください
+                    }
+                }
+            }
+            """;
+
+        await CodeFixVerify.VerifyCodeFixAsync(test, CodeFixVerify.Diagnostic().WithLocation(0).WithArguments("InvalidOperationException"), fixedSource);
+    }
+
+    /// <summary>
     /// 閉じ括弧の手前に複数行コメント（/* ... */）がある場合も、「意図的に何もしない」とみなされ診断が出ないことを確認する
     /// （HasCommentのMultiLineCommentTrivia判定を実際に通す）
     /// </summary>
