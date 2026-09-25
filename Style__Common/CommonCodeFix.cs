@@ -22,14 +22,17 @@ public static class CommonCodeFix
         var firstStmt = method.Body.Statements.FirstOrDefault();
         if (firstStmt != null)
         {
-            var newFirstStmt = firstStmt.WithLeadingTrivia(BuildIgnoreTriviaList(firstStmt.GetLeadingTrivia(), diagnosticId));
+            // 先頭ステートメントの先行トリビアは通常インデントのみで、直前の改行は { の後続トリビアに属するため、
+            // 直前トークンの後続トリビアも改行コードの判定材料に含める
+            var newLine = DetectNewLine(root, firstStmt.GetLeadingTrivia(), firstStmt.GetFirstToken().GetPreviousToken().TrailingTrivia);
+            var newFirstStmt = firstStmt.WithLeadingTrivia(BuildIgnoreTriviaList(firstStmt.GetLeadingTrivia(), diagnosticId, newLine));
             var newBody = method.Body.ReplaceNode(firstStmt, newFirstStmt);
             newMethod = method.WithBody(newBody);
         }
         else
         {
             var openBraceToken = method.Body.OpenBraceToken;
-            var newLine = DetectNewLine(openBraceToken.TrailingTrivia);
+            var newLine = DetectNewLine(root, openBraceToken.TrailingTrivia);
             var newOpenBraceToken = openBraceToken.WithTrailingTrivia(
                 openBraceToken.TrailingTrivia.AddRange(SyntaxFactory.TriviaList(
                     SyntaxFactory.Whitespace("    "),
@@ -49,7 +52,7 @@ public static class CommonCodeFix
     /// 実コードの直前にある最後のインデント（空白トリビア）の手前にIgnoreコメントを挿入する。
     /// 単純にリストの先頭に追加すると、既存の説明コメントより上に挿入されてしまうため。
     /// </summary>
-    private static SyntaxTriviaList BuildIgnoreTriviaList(SyntaxTriviaList existingLeadingTrivia, string diagnosticId)
+    private static SyntaxTriviaList BuildIgnoreTriviaList(SyntaxTriviaList existingLeadingTrivia, string diagnosticId, string newLine)
     {
         var triviaArray = existingLeadingTrivia.ToArray();
         var insertIndex = triviaArray.Length;
@@ -63,7 +66,6 @@ public static class CommonCodeFix
         }
 
         var indent = insertIndex < triviaArray.Length ? triviaArray[insertIndex].ToString() : string.Empty;
-        var newLine = DetectNewLine(existingLeadingTrivia);
 
         return SyntaxFactory.TriviaList(triviaArray.Take(insertIndex))
             .AddRange(SyntaxFactory.TriviaList(
@@ -74,11 +76,20 @@ public static class CommonCodeFix
     }
 
     /// <summary>
-    /// 既存トリビア中の改行コードを検出する。見つからない場合は "\r\n" にフォールバックする。
+    /// 挿入位置付近のトリビア（指定順）→ ファイル全体の最初の改行、の順に改行コードを検出する。
+    /// ファイル内に改行が1つも存在しない場合のみ "\r\n" にフォールバックする。
     /// </summary>
-    private static string DetectNewLine(SyntaxTriviaList triviaList)
+    private static string DetectNewLine(SyntaxNode root, params SyntaxTriviaList[] nearbyTriviaLists)
     {
-        foreach (var trivia in triviaList)
+        foreach (var triviaList in nearbyTriviaLists)
+        {
+            foreach (var trivia in triviaList)
+            {
+                if (trivia.IsKind(SyntaxKind.EndOfLineTrivia)) return trivia.ToString();
+            }
+        }
+
+        foreach (var trivia in root.DescendantTrivia())
         {
             if (trivia.IsKind(SyntaxKind.EndOfLineTrivia)) return trivia.ToString();
         }
