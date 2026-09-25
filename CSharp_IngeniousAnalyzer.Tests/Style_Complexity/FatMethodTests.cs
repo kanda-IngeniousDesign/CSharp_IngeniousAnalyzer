@@ -76,13 +76,13 @@ public class FatMethodTests
             }
             """;
 
-        var crlf = "\r\n";
         var fixedSource = $$"""
             public class C
             {
                 void BigMethod()
                 {
-                    // Ignore CPX002{{crlf}}        int hoge = 0;
+                    // Ignore CPX002
+                    int hoge = 0;
             {{body}}    }
             }
             """;

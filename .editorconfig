@@ -31,5 +31,8 @@ dotnet_diagnostic.COMP001.severity = warning
 dotnet_diagnostic.EXC001.severity = warning
 dotnet_diagnostic.EXC002.severity = warning
 
+# --- Async Rules (ConfigureAwait(false) to avoid deadlocks) ---
+dotnet_diagnostic.ASYNC001.severity = warning
+
 # IDE0130: Namespace がフォルダー構造と一致しません
 dotnet_diagnostic.IDE0130.severity = error

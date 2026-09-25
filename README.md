@@ -38,6 +38,8 @@ CPX001 and CPX002 don't have a fix that rewrites the flagged method itself (a sa
 private void SomeComplexLegacyMethod() { ... }
 ```
 
+ASYNC001 likewise doesn't provide a fix that appends `.ConfigureAwait(false)`. Adding it changes where the code after the `await` runs (it no longer returns to the original `SynchronizationContext`), so code that touches UI elements (WinForms/WPF) or `HttpContext.Current` (ASP.NET Framework) after the `await` would break at runtime, and the analyzer alone can't determine this with 100% accuracy. Please add it manually after confirming that the code after the `await` doesn't depend on the context. For methods that intentionally need to return to the original context, a Quick Fix inserts `// Ignore ASYNC001` at the start of the containing method's body (suppressing every await in that method, including those in lambdas and local functions). Awaits in `async void` methods/lambdas, `static Main`, and top-level statements are not flagged. If the rule is noisy in application or test projects, adjust its severity in .editorconfig.
+
 LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the corresponding `foreach` loop body calls any method on the original source collection (e.g. `Remove`, `Add`). Removing the materialization in that case would make the loop enumerate and mutate the same collection at once, causing a runtime `InvalidOperationException`; the `.ToList()`/`.ToArray()` there is very likely an intentional snapshot, not unnecessary allocation.
 
 ## Rule List
@@ -58,6 +60,7 @@ LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the cor
 | COMP001 | Standardization of inequality operator direction | Please reverse the inequality signs to improve readability. |
 | EXC001 | Improved maintainability by clarifying exception handling | The catch block for '{0}' is empty. Add handling, or if this is intentional, leave a comment explaining why. |
 | EXC002 | Preserve the stack trace when rethrowing exceptions | Use 'throw;' instead of 'throw {0};' to preserve the original stack trace. |
+| ASYNC001 | Deadlock avoidance by adding ConfigureAwait(false) | The call to '{0}' is missing ConfigureAwait(false). Consider adding it in library code to avoid potential deadlocks. |
 
 ---
 
@@ -98,6 +101,8 @@ CPX001・CPX002は、警告対象のメソッド自体を書き換えるFixは�
 private void SomeComplexLegacyMethod() { ... }
 ```
 
+ASYNC001も同様に、`.ConfigureAwait(false)` を追記するFixは提供していません。追記すると `await` 以降の処理が元の `SynchronizationContext` に戻らなくなるため、`await` の後でUI要素（WinForms/WPF）や `HttpContext.Current`（ASP.NET Framework）に触れているコードは実行時に動作しなくなります。アナライザー単体ではこれを100%判定できないため、`await` 以降の処理がコンテキストに依存していないことを確認のうえ、手動で追加してください。意図的に元のコンテキストへ戻す必要があるメソッドには、メソッド本体の先頭に `// Ignore ASYNC001` を挿入するクイックフィックスを用意しています（ラムダ式・ローカル関数を含め、そのメソッド内のすべての await が抑制されます）。なお、`async void` のメソッド・ラムダ式、`static Main`、トップレベルステートメント内の await は検知対象外です。アプリケーションやテストプロジェクトでノイズになる場合は、.editorconfig でseverityを調整してください。
+
 LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレクションに対するメソッド呼び出し（`Remove`、`Add`等）がある場合、`.ToList()`/`.ToArray()`を警告・自動修正しません。その状況で実体化を取り除くと、同じコレクションを列挙しながら変更することになり実行時に`InvalidOperationException`が発生してしまうため、その`.ToList()`/`.ToArray()`は不要なメモリ確保ではなく意図的なスナップショットである可能性が高いと判断しています。
 
 ## Rule List (ルール一覧)
@@ -118,3 +123,4 @@ LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレ�
 | COMP001 | 不等号演算子の向きの統一 | 可読性向上のため、不等号を反転させてください。 |
 | EXC001 | 例外処理の明確化による保守性向上 | '{0}' のcatchブロックが空です。処理を追加するか、意図的な場合はその理由をコメントで記述してください。 |
 | EXC002 | 再スロー時のスタックトレース保持 | 'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。 |
+| ASYNC001 | ConfigureAwait(false)の追加によるデッドロック回避 | '{0}' の呼び出しに ConfigureAwait(false) がありません。ライブラリコードではデッドロック回避のため追加を検討してください。 |
