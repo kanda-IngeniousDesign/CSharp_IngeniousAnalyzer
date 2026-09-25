@@ -47,4 +47,7 @@
   <data name="EXC002_Title"><value>再スロー時のスタックトレース保持</value></data>
   <data name="EXC002_Message"><value>'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。</value></data>
 
+  <data name="ASYNC001_Title"><value>ConfigureAwait(false)の追加によるデッドロック回避</value></data>
+  <data name="ASYNC001_Message"><value>'{0}' の呼び出しに ConfigureAwait(false) がありません。ライブラリコードではデッドロック回避のため追加を検討してください。</value></data>
+
 </root>

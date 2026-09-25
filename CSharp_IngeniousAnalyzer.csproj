@@ -14,11 +14,13 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.2.2</Version>
+    <Version>3.3.0</Version>
 
     <PackageReleaseNotes>
-      - EXC001 (EmptyCatch): catch (Exception ex) { } のように開き括弧と閉じ括弧が同じ行にある単一行の空catchブロックにFixを適用すると、閉じ括弧が挿入したTODOコメントに巻き込まれてコメントアウトされ、コンパイルエラーになる不具合を修正
-      - Fix EXC001 (EmptyCatch) fix commenting out the closing brace when applied to a single-line empty catch block (e.g. catch (Exception ex) { }), which caused a compile error
+      - ASYNC001を追加: Task / Task&lt;T&gt; / ValueTask / ValueTask&lt;T&gt; を ConfigureAwait なしで await している箇所を検知（async void・static Main・トップレベルステートメント内は対象外）。await以降のコンテキスト依存を100%判定できないため ".ConfigureAwait(false)" を追記するFixは提供せず、"// Ignore ASYNC001" コメントを挿入するFixのみ提供
+      - Add ASYNC001: detect awaiting Task / Task&lt;T&gt; / ValueTask / ValueTask&lt;T&gt; without ConfigureAwait, (async void, static Main, and top-level statements are excluded). Because whether the code after the await depends on the original context can't be determined with 100% accuracy, no Fix appends ".ConfigureAwait(false)"; only a Fix that inserts a "// Ignore ASYNC001" comment is provided
+      - CPX001/CPX002のIgnore Quick Fix: メソッド本体の先頭ステートメント前に挿入する際、改行コードの判定に失敗して常にCRLFになり、LFのファイルで改行コードが混在する不具合を修正
+      - Fix CPX001/CPX002 Ignore Quick Fix always inserting CRLF before the first statement of a method body (newline detection failed), which mixed line endings in LF files
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>

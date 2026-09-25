@@ -57,7 +57,11 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
         EXC001_Title,
         EXC001_Message,
         EXC002_Title,
-        EXC002_Message
+        EXC002_Message,
+
+        // Style_Async
+        ASYNC001_Title,
+        ASYNC001_Message
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)
