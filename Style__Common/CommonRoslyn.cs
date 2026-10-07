@@ -37,7 +37,11 @@ public static class CommonRoslyn
         return false;
     }
 
-    private static bool HasIgnoreCommentInLeadingTrivia(SyntaxNode node, string diagnosticId)
+    /// <summary>
+    /// 指定ノードの先行トリビア（直前のコメント行）にのみ "// Ignore &lt;DiagnosticId&gt;" があるかを判定する。
+    /// HasIgnoreComment と異なり、メソッド本体の先頭は見ない。
+    /// </summary>
+    public static bool HasIgnoreCommentInLeadingTrivia(this SyntaxNode node, string diagnosticId)
     {
         foreach (var trivia in node.GetLeadingTrivia())
         {

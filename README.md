@@ -41,6 +41,22 @@ private void SomeComplexLegacyMethod() { ... }
 ASYNC001 likewise doesn't provide a fix that appends `.ConfigureAwait(false)`. Adding it changes where the code after the `await` runs (it no longer returns to the original `SynchronizationContext`), so code that touches UI elements (WinForms/WPF) or `HttpContext.Current` (ASP.NET Framework) after the `await` would break at runtime, and the analyzer alone can't determine this with 100% accuracy. Please add it manually after confirming that the code after the `await` doesn't depend on the context. For methods that intentionally need to return to the original context, a Quick Fix inserts `// Ignore ASYNC001` at the start of the containing method's body (suppressing every await in that method, including those in lambdas and local functions). Awaits in `async void` methods/lambdas, `static Main`, and top-level statements are not flagged. If the rule is noisy in application or test projects, adjust its severity in .editorconfig.
 
 LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the corresponding `foreach` loop body calls any method on the original source collection (e.g. `Remove`, `Add`). Removing the materialization in that case would make the loop enumerate and mutate the same collection at once, causing a runtime `InvalidOperationException`; the `.ToList()`/`.ToArray()` there is very likely an intentional snapshot, not unnecessary allocation.
+UNI001 detects Unicode characters that can't be told apart visually. They sneak in easily when copying from web pages, AI chat output, or diff tools, and the code usually still compiles (C# treats a no-break space as whitespace, and zero-width characters are valid inside identifiers), so they are hard to notice. The following characters are flagged anywhere in the file (string literals, identifiers, whitespace, comments, and code disabled by `#if`):
+
+| Category | Characters |
+|---|---|
+| Control characters | C0 controls except tab/LF/CR (U+0000–U+001F), DELETE (U+007F), C1 controls (U+0080–U+009F) |
+| Special spaces | NO-BREAK SPACE (U+00A0), U+2000–U+200A, NARROW NO-BREAK SPACE (U+202F), MEDIUM MATHEMATICAL SPACE (U+205F) |
+| Zero-width / invisible format characters | SOFT HYPHEN (U+00AD), COMBINING GRAPHEME JOINER (U+034F), MONGOLIAN VOWEL SEPARATOR (U+180E), U+200B–U+200D, U+2060–U+2064, ZERO WIDTH NO-BREAK SPACE / BOM (U+FEFF, except at the start of the file), U+FFF9–U+FFFB |
+| Bidirectional controls ("Trojan Source") | U+061C, U+200E, U+200F, U+202A–U+202E, U+2066–U+206F |
+| Line breaks that don't look like line breaks | NEXT LINE (U+0085), LINE SEPARATOR (U+2028), PARAGRAPH SEPARATOR (U+2029) |
+| Characters rendered as blank | Hangul fillers (U+115F, U+1160, U+3164, U+FFA0), Khmer inherent vowels (U+17B4, U+17B5) |
+| Combining (semi-)voiced sound marks | U+3099, U+309A (`か` + U+3099 looks identical to `が`; occurs when copying file names on macOS) |
+| Tag characters | U+E0001, U+E0020–U+E007F (can embed invisible text) |
+
+The ideographic (full-width) space U+3000 is intentionally not flagged, as it is commonly used in Japanese text. Characters written as escape sequences (e.g. `"\u00A0"`) are visible in the source and are not flagged either, so write intentional uses that way.
+
+UNI001 doesn't provide a fix that rewrites the character. For example, whether a no-break space in a string should become a normal space, be removed, or is intentional can't be determined by the analyzer, and replacing it with `\u00A0` would only hide the warning while leaving the bug in place. Please correct it manually. For intentional occurrences, a Quick Fix inserts `// Ignore UNI001` immediately before the nearest statement or member declaration (field, method, class, etc.) containing the character. The comment also suppresses everything inside that statement/member, so placing it before a method or class suppresses the whole method or class.
 
 ## Rule List
 
@@ -61,6 +77,7 @@ LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the cor
 | EXC001 | Improved maintainability by clarifying exception handling | The catch block for '{0}' is empty. Add handling, or if this is intentional, leave a comment explaining why. |
 | EXC002 | Preserve the stack trace when rethrowing exceptions | Use 'throw;' instead of 'throw {0};' to preserve the original stack trace. |
 | ASYNC001 | Deadlock avoidance by adding ConfigureAwait(false) | The call to '{0}' is missing ConfigureAwait(false). Consider adding it in library code to avoid potential deadlocks. |
+| UNI001 | Prevent hidden bugs by detecting invisible Unicode characters | The invisible Unicode character {0} ({1}) is mixed into the code. If it was mixed in unintentionally, remove it or replace it with an ordinary character. |
 
 ---
 
@@ -105,6 +122,23 @@ ASYNC001も同様に、`.ConfigureAwait(false)` を追記するFixは提供し�
 
 LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレクションに対するメソッド呼び出し（`Remove`、`Add`等）がある場合、`.ToList()`/`.ToArray()`を警告・自動修正しません。その状況で実体化を取り除くと、同じコレクションを列挙しながら変更することになり実行時に`InvalidOperationException`が発生してしまうため、その`.ToList()`/`.ToArray()`は不要なメモリ確保ではなく意図的なスナップショットである可能性が高いと判断しています。
 
+UNI001は、目視で判別できないUnicode文字を検知します。Webページ・生成AIのチャット出力・差分ツール等からのコピー＆ペーストで混入しやすく、多くの場合そのままコンパイルが通る（C#はノーブレークスペースを空白として扱い、ゼロ幅文字は識別子の一部として有効）ため、気付くのが困難です。ファイル内のあらゆる場所（文字列リテラル・識別子・空白・コメント・`#if` で無効化されたコード）にある以下の文字を検知します。
+
+| 分類 | 対象文字 |
+|---|---|
+| 制御文字 | タブ・LF・CRを除くC0制御文字（U+0000〜U+001F）、DELETE（U+007F）、C1制御文字（U+0080〜U+009F） |
+| 特殊なスペース | ノーブレークスペース（U+00A0）、U+2000〜U+200A、NARROW NO-BREAK SPACE（U+202F）、MEDIUM MATHEMATICAL SPACE（U+205F） |
+| ゼロ幅文字・不可視の書式文字 | ソフトハイフン（U+00AD）、COMBINING GRAPHEME JOINER（U+034F）、MONGOLIAN VOWEL SEPARATOR（U+180E）、U+200B〜U+200D、U+2060〜U+2064、ZERO WIDTH NO-BREAK SPACE / BOM（U+FEFF。ファイル先頭を除く）、U+FFF9〜U+FFFB |
+| 双方向制御文字（Trojan Source） | U+061C、U+200E、U+200F、U+202A〜U+202E、U+2066〜U+206F |
+| 改行に見えない改行文字 | NEXT LINE（U+0085）、LINE SEPARATOR（U+2028）、PARAGRAPH SEPARATOR（U+2029） |
+| 空白として描画される文字 | ハングルの埋め字（U+115F、U+1160、U+3164、U+FFA0）、クメール文字の固有母音（U+17B4、U+17B5） |
+| 結合用の濁点・半濁点 | U+3099、U+309A（「か」＋U+3099 は「が」と同じ見た目になる。Macのファイル名のコピー等で混入する） |
+| タグ文字 | U+E0001、U+E0020〜U+E007F（不可視の文字列を埋め込める） |
+
+全角スペース（U+3000）は日本語の文字列・コメントで意図的に使われることが多いため、対象外としています。また、エスケープシーケンス（`"\u00A0"` 等）で記述された文字はソース上で目視できるため検知しません。意図的に使う場合はエスケープシーケンスで記述してください。
+
+UNI001は、文字を書き換えるFixは提供していません。例えば文字列内のノーブレークスペースは、半角スペースにすべきか・削除すべきか・意図的なのかをアナライザーが判断できず、`\u00A0` への置き換えは不具合を残したまま警告だけを消してしまうためです。手動で修正してください。意図的な箇所には、その文字を含む直近の文またはメンバー宣言（フィールド・メソッド・クラス等）の直前に `// Ignore UNI001` を挿入するクイックフィックスを用意しています。このコメントはその文・メンバーの内側すべてに効くため、メソッドやクラスの直前に書けば、そのメソッド・クラス全体を抑制できます。
+
 ## Rule List (ルール一覧)
 
 | ID | Title (JP) | Message (JP) |
@@ -124,3 +158,4 @@ LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレ�
 | EXC001 | 例外処理の明確化による保守性向上 | '{0}' のcatchブロックが空です。処理を追加するか、意図的な場合はその理由をコメントで記述してください。 |
 | EXC002 | 再スロー時のスタックトレース保持 | 'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。 |
 | ASYNC001 | ConfigureAwait(false)の追加によるデッドロック回避 | '{0}' の呼び出しに ConfigureAwait(false) がありません。ライブラリコードではデッドロック回避のため追加を検討してください。 |
+| UNI001 | 不可視Unicode文字の検知による不具合防止 | 目視で判別できないUnicode文字 {0}（{1}）が混入しています。意図しない混入であれば、削除するか通常の文字に置き換えてください。 |
