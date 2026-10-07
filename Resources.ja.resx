@@ -50,4 +50,7 @@
   <data name="ASYNC001_Title"><value>ConfigureAwait(false)の追加によるデッドロック回避</value></data>
   <data name="ASYNC001_Message"><value>'{0}' の呼び出しに ConfigureAwait(false) がありません。ライブラリコードではデッドロック回避のため追加を検討してください。</value></data>
 
+
+  <data name="UNI001_Title"><value>不可視Unicode文字の検知による不具合防止</value></data>
+  <data name="UNI001_Message"><value>目視で判別できないUnicode文字 {0}（{1}）が混入しています。意図しない混入であれば、削除するか通常の文字に置き換えてください。</value></data>
 </root>

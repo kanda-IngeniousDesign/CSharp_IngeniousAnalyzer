@@ -49,4 +49,7 @@
 
   <data name="ASYNC001_Title"><value>Deadlock avoidance by adding ConfigureAwait(false)</value></data>
   <data name="ASYNC001_Message"><value>The call to '{0}' is missing ConfigureAwait(false). Consider adding it in library code to avoid potential deadlocks.</value></data>
+
+  <data name="UNI001_Title"><value>Prevent hidden bugs by detecting invisible Unicode characters</value></data>
+  <data name="UNI001_Message"><value>The invisible Unicode character {0} ({1}) is mixed into the code. If it was mixed in unintentionally, remove it or replace it with an ordinary character.</value></data>
 </root>
