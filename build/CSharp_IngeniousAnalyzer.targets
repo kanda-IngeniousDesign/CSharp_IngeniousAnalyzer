@@ -1,0 +1,25 @@
+<Project>
+
+  <!--
+    TEST001（テストコードがないクラスの検知）用。
+    アナライザーは自分のプロジェクトのコードしか見られないため、テストプロジェクトのテストファイル（*Tests.cs）を
+    AdditionalFiles として渡す。テストプロジェクトの場所は、既定では隣のフォルダの「プロジェクト名.Tests」とし、
+    csproj で IngeniousTestProjectDirectory を指定すればそちらを優先する。
+  -->
+  <PropertyGroup>
+    <IngeniousTestProjectDirectory Condition="'$(IngeniousTestProjectDirectory)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildProjectDirectory)/../$(MSBuildProjectName).Tests'))</IngeniousTestProjectDirectory>
+  </PropertyGroup>
+
+  <ItemGroup Condition="Exists('$(IngeniousTestProjectDirectory)')">
+    <AdditionalFiles Include="$(IngeniousTestProjectDirectory)/**/*Tests.cs"
+                     Exclude="$(IngeniousTestProjectDirectory)/bin/**;$(IngeniousTestProjectDirectory)/obj/**"
+                     IngeniousTestFile="true"
+                     Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="IngeniousTestFile" />
+    <CompilerVisibleProperty Include="IngeniousTestProjectDirectory" />
+  </ItemGroup>
+
+</Project>

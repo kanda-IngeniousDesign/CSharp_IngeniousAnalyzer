@@ -14,7 +14,7 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.4.0</Version>
+    <Version>3.5.0-dev</Version>
 
     <PackageReleaseNotes>
       - UNI001を追加: ノーブレークスペース（U+00A0）・ゼロ幅文字・双方向制御文字・制御文字・結合用の濁点・タグ文字など、目視で判別できないUnicode文字の混入を、文字列・識別子・空白・コメントを問わず検知（全角スペースU+3000は対象外）。正しい修正（半角スペース化・削除等）をアナライザーが判断できないため書き換えるFixは提供せず、直近の文・メンバー宣言の直前に "// Ignore UNI001" コメントを挿入するFixのみ提供
@@ -39,6 +39,8 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.11.0" PrivateAssets="all" />
+    <!-- TEST001 のテストコード生成で使う。ホスト（VS / VS Code）は持っていないため、アナライザーと同じフォルダに同梱する -->
+    <PackageReference Include="IngeniousXUnitGenerator.Core" Version="0.1.0-dev" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <!-- テストプロジェクトをこの下に配置しているため、既定のglobに巻き込まれないよう除外する -->
@@ -56,6 +58,14 @@
           Pack="true" 
           PackagePath="analyzers/dotnet/cs/" 
           Visible="false" />
+
+    <None Include="$(PkgIngeniousXUnitGenerator_Core)\lib\netstandard2.0\IngeniousXUnitGenerator.Core.dll"
+          Pack="true"
+          PackagePath="analyzers/dotnet/cs/"
+          Visible="false" />
+
+    <!-- TEST001 用に、テストプロジェクトのファイル一覧をアナライザーへ渡す -->
+    <None Include="build\CSharp_IngeniousAnalyzer.targets" Pack="true" PackagePath="build/" />
 
     <None Include="$(OutputPath)\ja\$(AssemblyName).resources.dll" 
           Pack="true" 

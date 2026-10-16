@@ -48,6 +48,21 @@ public static class CommonCodeFix
     }
 
     /// <summary>
+    /// "// Ignore &lt;DiagnosticId&gt;" コメントを、指定の宣言（クラスなど）の直前の行に挿入する。
+    /// ドキュメントコメントや説明コメントより下、宣言の行頭インデントの手前に入る。
+    /// </summary>
+    public static async Task<Document> InsertIgnoreCommentBeforeAsync(this Document document, SyntaxNode declaration, string diagnosticId, CancellationToken cancellationToken)
+    {
+        var root = await document.GetSyntaxRootAsync(cancellationToken).ConfigureAwait(false);
+        if (root is null) return document;
+
+        var leadingTrivia = declaration.GetLeadingTrivia();
+        var newLine = DetectNewLine(root, leadingTrivia, declaration.GetFirstToken().GetPreviousToken().TrailingTrivia);
+        var newDeclaration = declaration.WithLeadingTrivia(BuildIgnoreTriviaList(leadingTrivia, diagnosticId, newLine));
+        return document.WithSyntaxRoot(root.ReplaceNode(declaration, newDeclaration));
+    }
+
+    /// <summary>
     /// 既存の先行トリビア（先頭ステートメントより前にある説明コメントや空行を含みうる）のうち、
     /// 実コードの直前にある最後のインデント（空白トリビア）の手前にIgnoreコメントを挿入する。
     /// 単純にリストの先頭に追加すると、既存の説明コメントより上に挿入されてしまうため。

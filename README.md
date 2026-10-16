@@ -58,6 +58,8 @@ The ideographic (full-width) space U+3000 is intentionally not flagged, as it is
 
 UNI001 doesn't provide a fix that rewrites the character. For example, whether a no-break space in a string should become a normal space, be removed, or is intentional can't be determined by the analyzer, and replacing it with `\u00A0` would only hide the warning while leaving the bug in place. Please correct it manually. For intentional occurrences, a Quick Fix inserts `// Ignore UNI001` immediately before the nearest statement or member declaration (field, method, class, etc.) containing the character. The comment also suppresses everything inside that statement/member, so placing it before a method or class suppresses the whole method or class.
 
+TEST001 flags classes that have no test code (`XxxTests.cs`) in the test project. It is **disabled by default** because it would flag almost every class in an existing project; enable it in `.editorconfig` with `dotnet_diagnostic.TEST001.severity = warning`. Only top-level, non-abstract classes that have a public method (or a public constructor with parameters) are flagged, and test projects themselves (projects that reference xUnit, NUnit, or MSTest) are excluded. The test project is looked up next to the project as `<ProjectName>.Tests` by default; set the `IngeniousTestProjectDirectory` property in the csproj to use another folder. The Quick Fix generates the test code (exception tests from argument guards, and boundary-value tests with expected values computed from the code) and adds it to the test project; if the test project references Moq and Verify.Xunit, dependencies are mocked and values that can't be computed are recorded as snapshots. Product code is never rewritten. A second Quick Fix inserts `// Ignore TEST001` before the class. The same generation is also available from the light bulb on any class name, even when TEST001 is disabled.
+
 ## Rule List
 
 | ID | Title | Message |
@@ -78,6 +80,7 @@ UNI001 doesn't provide a fix that rewrites the character. For example, whether a
 | EXC002 | Preserve the stack trace when rethrowing exceptions | Use 'throw;' instead of 'throw {0};' to preserve the original stack trace. |
 | ASYNC001 | Deadlock avoidance by adding ConfigureAwait(false) | The call to '{0}' is missing ConfigureAwait(false). Consider adding it in library code to avoid potential deadlocks. |
 | UNI001 | Prevent hidden bugs by detecting invisible Unicode characters | The invisible Unicode character {0} ({1}) is mixed into the code. If it was mixed in unintentionally, remove it or replace it with an ordinary character. |
+| TEST001 | Prevent untested classes by generating test code (disabled by default) | No test code ({0}Tests) was found for the class '{0}'. Generate the test code with the Quick Fix. |
 
 ---
 
@@ -139,6 +142,8 @@ UNI001は、目視で判別できないUnicode文字を検知します。Webペ�
 
 UNI001は、文字を書き換えるFixは提供していません。例えば文字列内のノーブレークスペースは、半角スペースにすべきか・削除すべきか・意図的なのかをアナライザーが判断できず、`\u00A0` への置き換えは不具合を残したまま警告だけを消してしまうためです。手動で修正してください。意図的な箇所には、その文字を含む直近の文またはメンバー宣言（フィールド・メソッド・クラス等）の直前に `// Ignore UNI001` を挿入するクイックフィックスを用意しています。このコメントはその文・メンバーの内側すべてに効くため、メソッドやクラスの直前に書けば、そのメソッド・クラス全体を抑制できます。
 
+TEST001は、テストプロジェクトにテストコード（`XxxTests.cs`）がないクラスを検知します。既存のプロジェクトではほぼすべてのクラスが対象になるため、**既定では無効**です。`.editorconfig` に `dotnet_diagnostic.TEST001.severity = warning` を書くと有効になります。対象は、入れ子でない抽象でないクラスのうち、publicなメソッド（または引数を持つpublicなコンストラクタ）を持つものです。テストプロジェクト自身（xUnit・NUnit・MSTestを参照しているプロジェクト）は対象外です。テストプロジェクトは、既定では隣のフォルダの「プロジェクト名.Tests」を探します。別の場所にある場合は、csprojで `IngeniousTestProjectDirectory` プロパティを指定してください。クイックフィックスでテストコード（引数ガードからの例外テストと、コードから期待値を計算した境界値のテスト）を生成し、テストプロジェクトに追加します。テストプロジェクトが Moq と Verify.Xunit を参照していれば、依存をモックし、計算できない値はスナップショットとして記録します。プロダクトコードは書き換えません。もう1つのクイックフィックスで、クラスの直前に `// Ignore TEST001` を挿入できます。TEST001を有効にしていなくても、クラス名の上の電球メニューから同じ生成を実行できます。
+
 ## Rule List (ルール一覧)
 
 | ID | Title (JP) | Message (JP) |
@@ -159,3 +164,4 @@ UNI001は、文字を書き換えるFixは提供していません。例えば�
 | EXC002 | 再スロー時のスタックトレース保持 | 'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。 |
 | ASYNC001 | ConfigureAwait(false)の追加によるデッドロック回避 | '{0}' の呼び出しに ConfigureAwait(false) がありません。ライブラリコードではデッドロック回避のため追加を検討してください。 |
 | UNI001 | 不可視Unicode文字の検知による不具合防止 | 目視で判別できないUnicode文字 {0}（{1}）が混入しています。意図しない混入であれば、削除するか通常の文字に置き換えてください。 |
+| TEST001 | テストコードの生成によるテスト漏れの防止（既定では無効） | クラス '{0}' のテストコード（{0}Tests）が見つかりません。クイックフィックスでテストコードを生成してください。 |

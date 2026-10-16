@@ -52,4 +52,7 @@
 
   <data name="UNI001_Title"><value>Prevent hidden bugs by detecting invisible Unicode characters</value></data>
   <data name="UNI001_Message"><value>The invisible Unicode character {0} ({1}) is mixed into the code. If it was mixed in unintentionally, remove it or replace it with an ordinary character.</value></data>
+
+  <data name="TEST001_Title"><value>Prevent untested classes by generating test code</value></data>
+  <data name="TEST001_Message"><value>No test code ({0}Tests) was found for the class '{0}'. Generate the test code with the Quick Fix.</value></data>
 </root>
