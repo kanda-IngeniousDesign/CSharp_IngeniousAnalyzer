@@ -55,17 +55,24 @@ public class GenerateTestFixTests
     }
 
     /// <summary>
-    /// テストプロジェクトがなければ、Ignore の Fix だけが出ることを確認する（プロジェクトの自動作成は別途対応）
+    /// テストプロジェクトがなければ、「テストプロジェクトを作成して生成」と Ignore が出ることを確認する。
+    /// 作成はプロジェクトの追加を伴うため、ソリューションの変更（ApplyChangesOperation）ではなく独自の操作になる
     /// </summary>
     [Fact]
-    public async Task Fix_NoTestProject_OffersOnlyIgnore()
+    public async Task Fix_NoTestProject_OffersCreateTestProjectAndIgnore()
     {
         using var workspace = new AdhocWorkspace();
         AddProductProject(workspace);
 
         var actions = await ComputeFixesAsync(workspace);
 
-        Assert.Equal(["Ignore : テストコードの存在チェックを無視する"], actions.Select(a => a.Title));
+        Assert.Equal(
+            ["Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する", "Ignore : テストコードの存在チェックを無視する"],
+            actions.Select(a => a.Title));
+        var operations = await actions[0].GetOperationsAsync(CancellationToken.None);
+        var operation = Assert.Single(operations);
+        Assert.IsNotType<ApplyChangesOperation>(operation);
+        Assert.Empty(await actions[0].GetPreviewOperationsAsync(CancellationToken.None));
     }
 
     /// <summary>

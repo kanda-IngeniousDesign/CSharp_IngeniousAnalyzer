@@ -32,7 +32,13 @@ public class MissingTestFix : CodeFixProvider
         if (semanticModel?.GetDeclaredSymbol(classDecl, context.CancellationToken) is { } targetType)
         {
             var document = context.Document;
-            foreach (var testProject in TestProjectFinder.Find(document.Project.Solution, document.Project))
+            var testProjects = TestProjectFinder.Find(document.Project.Solution, document.Project);
+
+            // テストプロジェクトがなければ、作成してから生成する Fix を出す
+            var createAction = testProjects.Count == 0 ? TestProjectLocator.TryCreateAction(document, targetType, semanticModel.Compilation) : null;
+            if (createAction is not null) context.RegisterCodeFix(createAction, diagnostic);
+
+            foreach (var testProject in testProjects)
             {
                 var testProjectId = testProject.Id;
                 context.RegisterCodeFix(

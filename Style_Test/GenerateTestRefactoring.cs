@@ -25,7 +25,11 @@ public class GenerateTestRefactoring : CodeRefactoringProvider
         var semanticModel = await document.GetSemanticModelAsync(context.CancellationToken).ConfigureAwait(false);
         if (semanticModel?.GetDeclaredSymbol(classDecl, context.CancellationToken) is not { } targetType) return;
 
-        foreach (var testProject in TestProjectFinder.Find(document.Project.Solution, document.Project))
+        var testProjects = TestProjectFinder.Find(document.Project.Solution, document.Project);
+        var createAction = testProjects.Count == 0 ? TestProjectLocator.TryCreateAction(document, targetType, semanticModel.Compilation) : null;
+        if (createAction is not null) context.RegisterRefactoring(createAction);
+
+        foreach (var testProject in testProjects)
         {
             // 既にテストファイルがあるテストプロジェクトには出さない（マージは未対応）
             if (TestDocumentWriter.Exists(testProject, document, targetType)) continue;
