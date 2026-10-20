@@ -24,7 +24,8 @@ internal sealed class CreateTestProjectCodeAction : CodeAction
 
     public override string Title => $"Fix : テストプロジェクト（{TestProjectName}）を作成してテストコードを生成する";
 
-    public override string? EquivalenceKey => "CreateTestProject";
+    // 一括適用（すべて修正）で複数のプロジェクト作成が同時に走らないよう、等価キーを持たせない
+    public override string? EquivalenceKey => null;
 
     private string TestProjectName => Path.GetFileName(_testProjectDirectory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
@@ -32,7 +33,9 @@ internal sealed class CreateTestProjectCodeAction : CodeAction
     {
         var (relativePath, code) = TestDocumentWriter.GenerateForNewProject(_document, _targetType, _compilation, TestProjectName);
         var productProjectPath = _document.Project.FilePath!;
-        var solutionPath = _document.Project.Solution.FilePath ?? TestProjectScaffolder.FindSolution(productProjectPath);
+        // VS Code（C# Dev Kit）では Solution.FilePath が内部で生成したソリューションを指すため使わず、
+        // プロダクトのプロジェクトから上へたどって、利用者のソリューションを探す
+        var solutionPath = TestProjectScaffolder.FindSolution(productProjectPath);
 
         IEnumerable<CodeActionOperation> operations = [new CreateTestProjectOperation(Title, _testProjectDirectory, productProjectPath, solutionPath, relativePath, code)];
         return Task.FromResult(operations);
