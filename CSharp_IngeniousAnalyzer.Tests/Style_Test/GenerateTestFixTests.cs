@@ -76,6 +76,40 @@ public class GenerateTestFixTests
     }
 
     /// <summary>
+    /// VS Code 向け（独自の操作が実行されない環境）では、csproj とテストファイルを
+    /// プロダクトのプロジェクトの追加ファイルとして作らせ（＝ファイルの作成として反映される）、ソリューションへの追加方法をコメントで案内することを確認する
+    /// </summary>
+    [Fact]
+    public async Task CreateTestProject_FileEditsMode_AddsProjectFileAndTestFileAsNewFiles()
+    {
+        using var workspace = new AdhocWorkspace();
+        AddProductProject(workspace);
+        var document = GetCalculatorDocument(workspace);
+        var compilation = (await document.Project.GetCompilationAsync())!;
+        var targetType = compilation.GetTypeByMetadataName("Product.Domain.Calculator")!;
+        var testProjectDirectory = Path.Combine("/src", "Product.Tests");
+
+        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true);
+        var newSolution = await ApplyAsync(action);
+
+        Assert.Equal("Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）", action.Title);
+        var changes = newSolution.GetChanges(workspace.CurrentSolution).GetProjectChanges().Single();
+        var added = changes.GetAddedAdditionalDocuments().Select(id => newSolution.GetAdditionalDocument(id)!).OrderBy(d => d.FilePath).ToList();
+        Assert.Equal(
+            [Path.Combine(testProjectDirectory, "Domain", "CalculatorTests.cs"), Path.Combine(testProjectDirectory, "Product.Tests.csproj")],
+            added.Select(d => d.FilePath));
+        Assert.Empty(changes.GetAddedDocuments());
+
+        var projectFile = (await added[1].GetTextAsync()).ToString();
+        Assert.Contains("<PackageReference Include=\"Verify.Xunit\"", projectFile);
+        Assert.Contains("<ProjectReference Include=", projectFile);
+
+        var testCode = (await added[0].GetTextAsync()).ToString();
+        Assert.StartsWith("// ソリューションに追加するには: dotnet sln add \"" + Path.Combine(testProjectDirectory, "Product.Tests.csproj") + "\"", testCode);
+        Assert.Contains("namespace Product.Tests.Domain;", testCode);
+    }
+
+    /// <summary>
     /// クラス名の上の電球メニューから生成でき、テストファイルが既にあるテストプロジェクトには出ないことを確認する
     /// </summary>
     [Fact]
