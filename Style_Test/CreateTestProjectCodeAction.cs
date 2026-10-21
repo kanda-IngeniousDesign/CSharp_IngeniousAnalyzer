@@ -38,6 +38,11 @@ public sealed class CreateTestProjectCodeAction : CodeAction
 
     protected override Task<IEnumerable<CodeActionOperation>> ComputeOperationsAsync(CancellationToken cancellationToken)
     {
+        return Task.FromResult(ComputeOperationsCore());
+    }
+
+    private IEnumerable<CodeActionOperation> ComputeOperationsCore()
+    {
         var (relativePath, code) = TestDocumentWriter.GenerateForNewProject(_document, _targetType, _compilation, TestProjectName);
         var productProjectPath = _document.Project.FilePath!;
 
@@ -48,7 +53,7 @@ public sealed class CreateTestProjectCodeAction : CodeAction
         IEnumerable<CodeActionOperation> operations = _useFileEdits
             ? [new ApplyChangesOperation(AddProjectFiles(productProjectPath, solutionPath, relativePath, code))]
             : [new CreateTestProjectOperation(Title, _testProjectDirectory, productProjectPath, solutionPath, relativePath, code)];
-        return Task.FromResult(operations);
+        return operations;
     }
 
     // Visual Studio の独自の操作（ディスクへの書き込み）はプレビューできないため、プレビューでは何も表示しない
