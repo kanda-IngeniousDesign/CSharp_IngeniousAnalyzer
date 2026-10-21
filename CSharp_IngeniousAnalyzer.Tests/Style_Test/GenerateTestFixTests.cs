@@ -89,7 +89,7 @@ public class GenerateTestFixTests
         var targetType = compilation.GetTypeByMetadataName("Product.Domain.Calculator")!;
         var testProjectDirectory = Path.Combine("/src", "Product.Tests");
 
-        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true);
+        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true, isRefactoring: false);
         var newSolution = await ApplyAsync(action);
 
         Assert.Equal("Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）", action.Title);
@@ -107,6 +107,28 @@ public class GenerateTestFixTests
         var testCode = (await added[0].GetTextAsync()).ToString();
         Assert.StartsWith("// ソリューションに追加するには: dotnet sln add \"" + Path.Combine(testProjectDirectory, "Product.Tests.csproj") + "\"", testCode);
         Assert.Contains("namespace Product.Tests.Domain;", testCode);
+    }
+
+    /// <summary>
+    /// テストプロジェクトがないとき、Fix とリファクタリングの「作成」が別のタイトルになることを確認する
+    /// （同じタイトルだと言語サーバーが1つにまとめ、ホバーの「クイック フィックス」から Fix が消える）
+    /// </summary>
+    [Fact]
+    public async Task CreateTestProject_FixAndRefactoring_HaveDifferentTitles()
+    {
+        using var workspace = new AdhocWorkspace();
+        AddProductProject(workspace);
+
+        var fixes = await ComputeFixesAsync(workspace);
+        var document = GetCalculatorDocument(workspace);
+        var position = (await document.GetTextAsync()).ToString().IndexOf("Calculator", StringComparison.Ordinal);
+        var refactorings = new List<CodeAction>();
+        await new GenerateTestRefactoring().ComputeRefactoringsAsync(
+            new CodeRefactoringContext(document, new TextSpan(position, 0), refactorings.Add, CancellationToken.None));
+
+        var refactoring = Assert.Single(refactorings);
+        Assert.Equal("このクラスのテストプロジェクト（Product.Tests）を作成してテストコードを生成", refactoring.Title);
+        Assert.DoesNotContain(fixes, f => f.Title == refactoring.Title);
     }
 
     /// <summary>

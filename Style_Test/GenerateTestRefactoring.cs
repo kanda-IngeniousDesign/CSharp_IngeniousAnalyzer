@@ -26,7 +26,7 @@ public class GenerateTestRefactoring : CodeRefactoringProvider
         if (semanticModel?.GetDeclaredSymbol(classDecl, context.CancellationToken) is not { } targetType) return;
 
         var testProjects = TestProjectFinder.Find(document.Project.Solution, document.Project);
-        var createAction = testProjects.Count == 0 ? TestProjectLocator.TryCreateAction(document, targetType, semanticModel.Compilation) : null;
+        var createAction = testProjects.Count == 0 ? TestProjectLocator.TryCreateAction(document, targetType, semanticModel.Compilation, isRefactoring: true) : null;
         if (createAction is not null) context.RegisterRefactoring(createAction);
 
         foreach (var testProject in testProjects)

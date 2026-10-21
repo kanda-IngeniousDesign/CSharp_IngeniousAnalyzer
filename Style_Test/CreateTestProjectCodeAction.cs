@@ -17,19 +17,25 @@ public sealed class CreateTestProjectCodeAction : CodeAction
     private readonly Compilation _compilation;
     private readonly string _testProjectDirectory;
     private readonly bool _useFileEdits;
+    private readonly bool _isRefactoring;
 
-    public CreateTestProjectCodeAction(Document document, INamedTypeSymbol targetType, Compilation compilation, string testProjectDirectory, bool useFileEdits)
+    public CreateTestProjectCodeAction(
+        Document document, INamedTypeSymbol targetType, Compilation compilation, string testProjectDirectory, bool useFileEdits, bool isRefactoring)
     {
         _document = document;
         _targetType = targetType;
         _compilation = compilation;
         _testProjectDirectory = testProjectDirectory;
         _useFileEdits = useFileEdits;
+        _isRefactoring = isRefactoring;
     }
 
-    public override string Title => _useFileEdits
-        ? $"Fix : テストプロジェクト（{TestProjectName}）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）"
-        : $"Fix : テストプロジェクト（{TestProjectName}）を作成してテストコードを生成する";
+    // Fix とリファクタリングで同じタイトルにしてはならない。言語サーバーは同じタイトルのアクションを1つにまとめ、
+    // 範囲を選んだ要求（ホバーの「クイック フィックス」）ではリファクタリング側が残るため、クイックフィックスの一覧から消えてしまう
+    public override string Title => (_isRefactoring
+            ? $"このクラスのテストプロジェクト（{TestProjectName}）を作成してテストコードを生成"
+            : $"Fix : テストプロジェクト（{TestProjectName}）を作成してテストコードを生成する")
+        + (_useFileEdits ? "（ソリューションへの追加は dotnet sln add で）" : string.Empty);
 
     // 一括適用（すべて修正）で複数のプロジェクト作成が同時に走らないよう、等価キーを持たせない
     public override string? EquivalenceKey => null;

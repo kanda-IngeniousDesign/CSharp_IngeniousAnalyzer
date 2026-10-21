@@ -35,7 +35,7 @@ public class MissingTestFix : CodeFixProvider
             var testProjects = TestProjectFinder.Find(document.Project.Solution, document.Project);
 
             // テストプロジェクトがなければ、作成してから生成する Fix を出す
-            var createAction = testProjects.Count == 0 ? TestProjectLocator.TryCreateAction(document, targetType, semanticModel.Compilation) : null;
+            var createAction = testProjects.Count == 0 ? TestProjectLocator.TryCreateAction(document, targetType, semanticModel.Compilation, isRefactoring: false) : null;
             if (createAction is not null) context.RegisterCodeFix(createAction, diagnostic);
 
             foreach (var testProject in testProjects)
