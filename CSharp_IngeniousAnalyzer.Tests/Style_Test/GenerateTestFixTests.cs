@@ -24,6 +24,10 @@ public class GenerateTestFixTests
                 if (divisor == 0) throw new ArgumentOutOfRangeException(nameof(divisor));
                 return dividend / divisor;
             }
+
+            public int Twice(int value) => value * 2;
+
+            private int Helper(int value) => value;
         }
         """;
 
@@ -89,7 +93,7 @@ public class GenerateTestFixTests
         var targetType = compilation.GetTypeByMetadataName("Product.Domain.Calculator")!;
         var testProjectDirectory = Path.Combine("/src", "Product.Tests");
 
-        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true, isRefactoring: false);
+        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true, CreateTestProjectCodeAction.Origin.Fix);
         var newSolution = await ApplyAsync(action);
 
         Assert.Equal("Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）", action.Title);
@@ -132,26 +136,88 @@ public class GenerateTestFixTests
     }
 
     /// <summary>
-    /// クラス名の上の電球メニューから生成でき、テストファイルが既にあるテストプロジェクトには出ないことを確認する
+    /// クラス名の上の電球メニューは、テストファイルがなければ「生成」、あれば「不足しているテストコードを追加」になることを確認する
     /// </summary>
     [Fact]
-    public async Task Refactoring_OffersOnlyForTestProjectsWithoutTestFile()
+    public async Task Refactoring_OnClassName_GeneratesOrAddsMissingTestsPerTestProject()
     {
         using var workspace = new AdhocWorkspace();
         var product = AddProductProject(workspace);
         AddProject(workspace, "Product.Tests", [CorLib, XUnitCore], product.Id);
         var integration = AddProject(workspace, "Product.IntegrationTests", [CorLib, XUnitCore], product.Id);
-        workspace.AddDocument(DocumentInfo.Create(
+        var existing = workspace.AddDocument(DocumentInfo.Create(
             DocumentId.CreateNewId(integration.Id), "CalculatorTests.cs", ["Domain"],
-            loader: TextLoader.From(TextAndVersion.Create(SourceText.From("// 既存のテスト"), VersionStamp.Create()))));
+            loader: TextLoader.From(TextAndVersion.Create(
+                SourceText.From("namespace Product.IntegrationTests.Domain;\n\npublic class CalculatorTests\n{\n    // 人間が書いたテスト\n}\n"), VersionStamp.Create()))));
 
+        var actions = await ComputeRefactoringsAsync(workspace, "Calculator");
+
+        Assert.Equal(
+            ["このクラスの不足しているテストコードを追加（Product.IntegrationTests）", "このクラスのテストコードを生成（Product.Tests）"],
+            actions.Select(a => a.Title));
+
+        var merged = (await (await ApplyAsync(actions[0])).GetDocument(existing.Id)!.GetTextAsync()).ToString();
+        Assert.Contains("// 人間が書いたテスト", merged);
+        Assert.Contains("public void Divide_DivisorIsZero_ThrowsArgumentOutOfRangeException()", merged);
+    }
+
+    /// <summary>
+    /// メソッド名の上の電球メニューでは、そのメソッドのテストだけを生成することを確認する
+    /// </summary>
+    [Fact]
+    public async Task Refactoring_OnMethodName_GeneratesTestsForThatMethodOnly()
+    {
+        using var workspace = new AdhocWorkspace();
+        var product = AddProductProject(workspace);
+        var tests = AddProject(workspace, "Product.Tests", [CorLib, XUnitCore], product.Id);
+
+        var actions = await ComputeRefactoringsAsync(workspace, "Twice");
+
+        var action = Assert.Single(actions);
+        Assert.Equal("このメソッドのテストコードを生成（Product.Tests）", action.Title);
+        var added = Assert.Single((await ApplyAsync(action)).GetProject(tests.Id)!.Documents);
+        var text = (await added.GetTextAsync()).ToString();
+        Assert.Contains("Twice_BoundaryValues_ReturnsExpected", text);
+        Assert.DoesNotContain("Divide", text);
+    }
+
+    /// <summary>
+    /// テストプロジェクトがなければ、メソッド名の上でも「テストプロジェクトを作成」が出ることを確認する
+    /// </summary>
+    [Fact]
+    public async Task Refactoring_OnMethodNameWithoutTestProject_OffersCreateForThatMethod()
+    {
+        using var workspace = new AdhocWorkspace();
+        AddProductProject(workspace);
+
+        var actions = await ComputeRefactoringsAsync(workspace, "Twice");
+
+        Assert.Equal(["このメソッドのテストプロジェクト（Product.Tests）を作成してテストコードを生成"], actions.Select(a => a.Title));
+    }
+
+    /// <summary>
+    /// メソッド本体の中や、private メソッドの上では電球メニューを出さないことを確認する
+    /// </summary>
+    [Theory]
+    [InlineData("dividend / divisor")]
+    [InlineData("Helper")]
+    public async Task Refactoring_OutsideNamesOrOnPrivateMethod_OffersNothing(string cursorAt)
+    {
+        using var workspace = new AdhocWorkspace();
+        var product = AddProductProject(workspace);
+        AddProject(workspace, "Product.Tests", [CorLib, XUnitCore], product.Id);
+
+        Assert.Empty(await ComputeRefactoringsAsync(workspace, cursorAt));
+    }
+
+    private static async Task<List<CodeAction>> ComputeRefactoringsAsync(AdhocWorkspace workspace, string cursorAt)
+    {
         var document = GetCalculatorDocument(workspace);
-        var position = (await document.GetTextAsync()).ToString().IndexOf("Calculator", StringComparison.Ordinal);
+        var position = (await document.GetTextAsync()).ToString().IndexOf(cursorAt, StringComparison.Ordinal);
         var actions = new List<CodeAction>();
-        var context = new CodeRefactoringContext(document, new TextSpan(position, 0), actions.Add, CancellationToken.None);
-        await new GenerateTestRefactoring().ComputeRefactoringsAsync(context);
-
-        Assert.Equal(["このクラスのテストコードを生成（Product.Tests）"], actions.Select(a => a.Title));
+        await new GenerateTestRefactoring().ComputeRefactoringsAsync(
+            new CodeRefactoringContext(document, new TextSpan(position, 0), actions.Add, CancellationToken.None));
+        return actions;
     }
 
     private static async Task<List<CodeAction>> ComputeFixesAsync(AdhocWorkspace workspace)
