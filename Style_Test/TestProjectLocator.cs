@@ -1,6 +1,6 @@
-using IngeniousXUnitGenerator.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
+using XUnit_IngeniousGenerator.Core;
 
 namespace CSharp_IngeniousAnalyzer.Style_Test;
 

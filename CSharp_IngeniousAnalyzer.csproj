@@ -40,7 +40,7 @@
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.11.0" PrivateAssets="all" />
     <!-- TEST001 のテストコード生成で使う。ホスト（VS / VS Code）は持っていないため、アナライザーと同じフォルダに同梱する -->
-    <PackageReference Include="IngeniousXUnitGenerator.Core" Version="0.1.0-preview.1" PrivateAssets="all" GeneratePathProperty="true" />
+    <PackageReference Include="XUnit_IngeniousGenerator.Core" Version="0.1.0-preview.1" PrivateAssets="all" GeneratePathProperty="true" />
   </ItemGroup>
 
   <!-- テストプロジェクトをこの下に配置しているため、既定のglobに巻き込まれないよう除外する -->
@@ -59,7 +59,7 @@
           PackagePath="analyzers/dotnet/cs/" 
           Visible="false" />
 
-    <None Include="$(PkgIngeniousXUnitGenerator_Core)\lib\netstandard2.0\IngeniousXUnitGenerator.Core.dll"
+    <None Include="$(PkgXUnit_IngeniousGenerator_Core)\lib\netstandard2.0\XUnit_IngeniousGenerator.Core.dll"
           Pack="true"
           PackagePath="analyzers/dotnet/cs/"
           Visible="false" />

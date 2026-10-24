@@ -1,11 +1,11 @@
 using System.Collections.Immutable;
 using System.Composition;
 using CSharp_IngeniousAnalyzer.Style__Common;
-using IngeniousXUnitGenerator.Core;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
+using XUnit_IngeniousGenerator.Core;
 
 namespace CSharp_IngeniousAnalyzer.Style_Test;
 
