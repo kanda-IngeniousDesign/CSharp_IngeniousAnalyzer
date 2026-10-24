@@ -85,9 +85,6 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
     public static bool IsGeneratedFile(SyntaxNodeAnalysisContext context)
     {
-        var filePath = context.Node.SyntaxTree.FilePath;
-        return filePath.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase) ||
-            filePath.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) || // WPF/XAML自動生成用
-            filePath.EndsWith(".generated.cs", StringComparison.OrdinalIgnoreCase);
+        return GeneratedCode.IsGeneratedFile(context.Node.SyntaxTree);
     }
 }

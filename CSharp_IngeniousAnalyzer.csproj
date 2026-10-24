@@ -39,6 +39,12 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.11.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.3.4" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="4.11.0" PrivateAssets="all" />
+    <!-- "// Ignore" の判定・挿入など、XUnit_IngeniousGenerator と共有する部品（dll ではなくソースとして取り込む） -->
+    <PackageReference Include="Roslyn_IngeniousCommon" Version="1.0.0" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Roslyn_IngeniousCommon" />
   </ItemGroup>
 
   <!-- テストプロジェクトをこの下に配置しているため、既定のglobに巻き込まれないよう除外する -->
