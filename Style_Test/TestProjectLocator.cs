@@ -11,13 +11,13 @@ internal static class TestProjectLocator
     /// テストプロジェクトを作成してテストコードを生成するアクションを作る（作れない場合は null）
     /// </summary>
     public static CodeAction? TryCreateAction(
-        Document document, INamedTypeSymbol targetType, Compilation compilation, CreateTestProjectCodeAction.Origin origin, IMethodSymbol? onlyMember = null)
+        Document document, INamedTypeSymbol targetType, Compilation compilation, IMethodSymbol? onlyMember = null)
     {
         var directory = GetTestProjectDirectory(document.Project);
         if (directory is null || !TestProjectScaffolder.CanCreate(directory)) return null;
 
         var useFileEdits = IsLanguageServer(document.Project.Solution.Workspace);
-        return new CreateTestProjectCodeAction(document, targetType, compilation, directory, useFileEdits, origin, onlyMember);
+        return new CreateTestProjectCodeAction(document, targetType, compilation, directory, useFileEdits, onlyMember);
     }
 
     /// <summary>

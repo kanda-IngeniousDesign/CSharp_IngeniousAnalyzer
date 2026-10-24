@@ -1,8 +1,8 @@
 <Project>
 
   <!--
-    TEST001（テストコードがないクラスの検知）用。
-    アナライザーは自分のプロジェクトのコードしか見られないため、テストプロジェクトのテストファイル（*Tests.cs）を
+    TEST001・TEST002（テストコードの不足の検知）用。
+    アナライザーは自分のプロジェクトのコードしか見られないため、テストプロジェクトのテストファイル（*Tests.cs）と csproj を
     AdditionalFiles として渡す。テストプロジェクトの場所は、既定では隣のフォルダの「プロジェクト名.Tests」とし、
     csproj で IngeniousTestProjectDirectory を指定すればそちらを優先する。
   -->
@@ -19,10 +19,15 @@
                      Exclude="$(IngeniousTestProjectDirectory)/bin/**;$(IngeniousTestProjectDirectory)/obj/**"
                      IngeniousTestFile="true"
                      Visible="false" />
+    <!-- テストプロジェクトが Moq・Verify を参照しているか（生成できるテストの範囲が変わる）を判定するために渡す -->
+    <AdditionalFiles Include="$(IngeniousTestProjectDirectory)/*.csproj"
+                     IngeniousTestProjectFile="true"
+                     Visible="false" />
   </ItemGroup>
 
   <ItemGroup>
     <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="IngeniousTestFile" />
+    <CompilerVisibleItemMetadata Include="AdditionalFiles" MetadataName="IngeniousTestProjectFile" />
     <CompilerVisibleProperty Include="IngeniousTestProjectDirectory" />
   </ItemGroup>
 

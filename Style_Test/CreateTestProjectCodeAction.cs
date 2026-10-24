@@ -12,47 +12,25 @@ namespace CSharp_IngeniousAnalyzer.Style_Test;
 //                   追加ファイル（AdditionalDocument）として csproj とテストファイルを作らせる。ソリューションへの追加だけは手動
 public sealed class CreateTestProjectCodeAction : CodeAction
 {
-    /// <summary>アクションの呼び出し元（タイトルを呼び出し元ごとに変える）</summary>
-    public enum Origin
-    {
-        /// <summary>TEST001 の Fix</summary>
-        Fix,
-
-        /// <summary>クラス名の上の電球メニュー</summary>
-        ClassRefactoring,
-
-        /// <summary>メソッド名の上の電球メニュー</summary>
-        MethodRefactoring,
-    }
-
     private readonly Document _document;
     private readonly INamedTypeSymbol _targetType;
     private readonly Compilation _compilation;
     private readonly string _testProjectDirectory;
     private readonly bool _useFileEdits;
-    private readonly Origin _origin;
     private readonly IMethodSymbol? _onlyMember;
 
     public CreateTestProjectCodeAction(
-        Document document, INamedTypeSymbol targetType, Compilation compilation, string testProjectDirectory, bool useFileEdits, Origin origin, IMethodSymbol? onlyMember = null)
+        Document document, INamedTypeSymbol targetType, Compilation compilation, string testProjectDirectory, bool useFileEdits, IMethodSymbol? onlyMember = null)
     {
         _document = document;
         _targetType = targetType;
         _compilation = compilation;
         _testProjectDirectory = testProjectDirectory;
         _useFileEdits = useFileEdits;
-        _origin = origin;
         _onlyMember = onlyMember;
     }
 
-    // Fix とリファクタリングで同じタイトルにしてはならない。言語サーバーは同じタイトルのアクションを1つにまとめ、
-    // 範囲を選んだ要求（ホバーの「クイック フィックス」）ではリファクタリング側が残るため、クイックフィックスの一覧から消えてしまう
-    public override string Title => _origin switch
-        {
-            Origin.ClassRefactoring => $"このクラスのテストプロジェクト（{TestProjectName}）を作成してテストコードを生成",
-            Origin.MethodRefactoring => $"このメソッドのテストプロジェクト（{TestProjectName}）を作成してテストコードを生成",
-            _ => $"Fix : テストプロジェクト（{TestProjectName}）を作成してテストコードを生成する",
-        }
+    public override string Title => $"Fix : テストプロジェクト（{TestProjectName}）を作成してテストコードを生成する"
         + (_useFileEdits ? "（ソリューションへの追加は dotnet sln add で）" : string.Empty);
 
     // 一括適用（すべて修正）で複数のプロジェクト作成が同時に走らないよう、等価キーを持たせない

@@ -3,14 +3,13 @@ using CSharp_IngeniousAnalyzer.Style_Test;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CodeActions;
 using Microsoft.CodeAnalysis.CodeFixes;
-using Microsoft.CodeAnalysis.CodeRefactorings;
 using Microsoft.CodeAnalysis.Text;
 
 namespace CSharp_IngeniousAnalyzer.Tests.Style_Test;
 
 /// <summary>
-/// TEST001 の「テストコードを生成」Fix と、クラス名の上の電球メニュー（リファクタリング）が、
-/// 別プロジェクト（テストプロジェクト）にテストファイルを追加することを検証するテスト
+/// TEST001 の「テストコードを生成」Fix が、別プロジェクト（テストプロジェクト）にテストファイルを追加・追記することと、
+/// TEST002 の Ignore を検証するテスト
 /// </summary>
 public class GenerateTestFixTests
 {
@@ -93,7 +92,7 @@ public class GenerateTestFixTests
         var targetType = compilation.GetTypeByMetadataName("Product.Domain.Calculator")!;
         var testProjectDirectory = Path.Combine("/src", "Product.Tests");
 
-        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true, CreateTestProjectCodeAction.Origin.Fix);
+        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true);
         var newSolution = await ApplyAsync(action);
 
         Assert.Equal("Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）", action.Title);
@@ -114,119 +113,57 @@ public class GenerateTestFixTests
     }
 
     /// <summary>
-    /// テストプロジェクトがないとき、Fix とリファクタリングの「作成」が別のタイトルになることを確認する
-    /// （同じタイトルだと言語サーバーが1つにまとめ、ホバーの「クイック フィックス」から Fix が消える）
+    /// 関数名の TEST001 では、その関数のテストだけを既存のテストファイルに追加することを確認する
     /// </summary>
     [Fact]
-    public async Task CreateTestProject_FixAndRefactoring_HaveDifferentTitles()
-    {
-        using var workspace = new AdhocWorkspace();
-        AddProductProject(workspace);
-
-        var fixes = await ComputeFixesAsync(workspace);
-        var document = GetCalculatorDocument(workspace);
-        var position = (await document.GetTextAsync()).ToString().IndexOf("Calculator", StringComparison.Ordinal);
-        var refactorings = new List<CodeAction>();
-        await new GenerateTestRefactoring().ComputeRefactoringsAsync(
-            new CodeRefactoringContext(document, new TextSpan(position, 0), refactorings.Add, CancellationToken.None));
-
-        var refactoring = Assert.Single(refactorings);
-        Assert.Equal("このクラスのテストプロジェクト（Product.Tests）を作成してテストコードを生成", refactoring.Title);
-        Assert.DoesNotContain(fixes, f => f.Title == refactoring.Title);
-    }
-
-    /// <summary>
-    /// クラス名の上の電球メニューは、テストファイルがなければ「生成」、あれば「不足しているテストコードを追加」になることを確認する
-    /// </summary>
-    [Fact]
-    public async Task Refactoring_OnClassName_GeneratesOrAddsMissingTestsPerTestProject()
-    {
-        using var workspace = new AdhocWorkspace();
-        var product = AddProductProject(workspace);
-        AddProject(workspace, "Product.Tests", [CorLib, XUnitCore], product.Id);
-        var integration = AddProject(workspace, "Product.IntegrationTests", [CorLib, XUnitCore], product.Id);
-        var existing = workspace.AddDocument(DocumentInfo.Create(
-            DocumentId.CreateNewId(integration.Id), "CalculatorTests.cs", ["Domain"],
-            loader: TextLoader.From(TextAndVersion.Create(
-                SourceText.From("namespace Product.IntegrationTests.Domain;\n\npublic class CalculatorTests\n{\n    // 人間が書いたテスト\n}\n"), VersionStamp.Create()))));
-
-        var actions = await ComputeRefactoringsAsync(workspace, "Calculator");
-
-        Assert.Equal(
-            ["このクラスの不足しているテストコードを追加（Product.IntegrationTests）", "このクラスのテストコードを生成（Product.Tests）"],
-            actions.Select(a => a.Title));
-
-        var merged = (await (await ApplyAsync(actions[0])).GetDocument(existing.Id)!.GetTextAsync()).ToString();
-        Assert.Contains("// 人間が書いたテスト", merged);
-        Assert.Contains("public void Divide_DivisorIsZero_ThrowsArgumentOutOfRangeException()", merged);
-    }
-
-    /// <summary>
-    /// メソッド名の上の電球メニューでは、そのメソッドのテストだけを生成することを確認する
-    /// </summary>
-    [Fact]
-    public async Task Refactoring_OnMethodName_GeneratesTestsForThatMethodOnly()
+    public async Task Fix_OnMember_AddsTestsForThatMemberOnly()
     {
         using var workspace = new AdhocWorkspace();
         var product = AddProductProject(workspace);
         var tests = AddProject(workspace, "Product.Tests", [CorLib, XUnitCore], product.Id);
+        var existing = workspace.AddDocument(DocumentInfo.Create(
+            DocumentId.CreateNewId(tests.Id), "CalculatorTests.cs", ["Domain"],
+            loader: TextLoader.From(TextAndVersion.Create(
+                SourceText.From("namespace Product.Tests.Domain;\n\npublic class CalculatorTests\n{\n    // 人間が書いたテスト\n}\n"), VersionStamp.Create()))));
 
-        var actions = await ComputeRefactoringsAsync(workspace, "Twice");
+        var actions = await ComputeFixesAsync(workspace, "Twice", MissingTest.MemberRule);
 
-        var action = Assert.Single(actions);
-        Assert.Equal("このメソッドのテストコードを生成（Product.Tests）", action.Title);
-        var added = Assert.Single((await ApplyAsync(action)).GetProject(tests.Id)!.Documents);
-        var text = (await added.GetTextAsync()).ToString();
-        Assert.Contains("Twice_BoundaryValues_ReturnsExpected", text);
-        Assert.DoesNotContain("Divide", text);
+        Assert.Equal(["Fix : この関数のテストコードを追加する（Product.Tests）", "Ignore : テストコードの存在チェックを無視する"], actions.Select(a => a.Title));
+        var merged = (await (await ApplyAsync(actions[0])).GetDocument(existing.Id)!.GetTextAsync()).ToString();
+        Assert.Contains("// 人間が書いたテスト", merged);
+        Assert.Contains("Twice_BoundaryValues_ReturnsExpected", merged);
+        Assert.DoesNotContain("Divide", merged);
     }
 
     /// <summary>
-    /// テストプロジェクトがなければ、メソッド名の上でも「テストプロジェクトを作成」が出ることを確認する
+    /// TEST002 には Ignore だけが出て、関数の直前に「// Ignore TEST002」が挿入されることを確認する
     /// </summary>
     [Fact]
-    public async Task Refactoring_OnMethodNameWithoutTestProject_OffersCreateForThatMethod()
-    {
-        using var workspace = new AdhocWorkspace();
-        AddProductProject(workspace);
-
-        var actions = await ComputeRefactoringsAsync(workspace, "Twice");
-
-        Assert.Equal(["このメソッドのテストプロジェクト（Product.Tests）を作成してテストコードを生成"], actions.Select(a => a.Title));
-    }
-
-    /// <summary>
-    /// メソッド本体の中や、private メソッドの上では電球メニューを出さないことを確認する
-    /// </summary>
-    [Theory]
-    [InlineData("dividend / divisor")]
-    [InlineData("Helper")]
-    public async Task Refactoring_OutsideNamesOrOnPrivateMethod_OffersNothing(string cursorAt)
+    public async Task Fix_NotGeneratable_OffersOnlyIgnoreBeforeMember()
     {
         using var workspace = new AdhocWorkspace();
         var product = AddProductProject(workspace);
         AddProject(workspace, "Product.Tests", [CorLib, XUnitCore], product.Id);
 
-        Assert.Empty(await ComputeRefactoringsAsync(workspace, cursorAt));
+        var actions = await ComputeFixesAsync(workspace, "Twice", MissingTest.NotGeneratableRule);
+
+        var action = Assert.Single(actions);
+        Assert.Equal("Ignore : 自動生成できないテストの警告を無視する（別の方法で確認済み）", action.Title);
+        var document = (await ApplyAsync(action)).Projects.Single(p => p.Name == "Product").Documents.Single();
+        Assert.Contains("    // Ignore TEST002\n    public int Twice(int value)", (await document.GetTextAsync()).ToString());
     }
 
-    private static async Task<List<CodeAction>> ComputeRefactoringsAsync(AdhocWorkspace workspace, string cursorAt)
+    private static Task<List<CodeAction>> ComputeFixesAsync(AdhocWorkspace workspace)
     {
-        var document = GetCalculatorDocument(workspace);
-        var position = (await document.GetTextAsync()).ToString().IndexOf(cursorAt, StringComparison.Ordinal);
-        var actions = new List<CodeAction>();
-        await new GenerateTestRefactoring().ComputeRefactoringsAsync(
-            new CodeRefactoringContext(document, new TextSpan(position, 0), actions.Add, CancellationToken.None));
-        return actions;
+        return ComputeFixesAsync(workspace, "Calculator", new MissingTest().SupportedDiagnostics[0]);
     }
 
-    private static async Task<List<CodeAction>> ComputeFixesAsync(AdhocWorkspace workspace)
+    private static async Task<List<CodeAction>> ComputeFixesAsync(AdhocWorkspace workspace, string identifierText, DiagnosticDescriptor descriptor)
     {
         var document = GetCalculatorDocument(workspace);
         var root = (await document.GetSyntaxRootAsync())!;
-        var identifier = root.DescendantTokens().First(t => t.ValueText == "Calculator");
-        var descriptor = new MissingTest().SupportedDiagnostics.Single();
-        var diagnostic = Diagnostic.Create(descriptor, identifier.GetLocation(), "Calculator");
+        var identifier = root.DescendantTokens().First(t => t.ValueText == identifierText);
+        var diagnostic = Diagnostic.Create(descriptor, identifier.GetLocation(), identifierText, "x");
 
         var actions = new List<CodeAction>();
         var context = new CodeFixContext(document, diagnostic, (action, _) => actions.Add(action), CancellationToken.None);

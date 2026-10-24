@@ -69,7 +69,10 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         // Style_Test
         TEST001_Title,
-        TEST001_Message
+        TEST001_Message,
+        TEST001_MemberMessage,
+        TEST002_Title,
+        TEST002_Message
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)
