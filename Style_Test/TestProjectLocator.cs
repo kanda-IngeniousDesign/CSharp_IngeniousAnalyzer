@@ -16,16 +16,7 @@ internal static class TestProjectLocator
         var directory = GetTestProjectDirectory(document.Project);
         if (directory is null || !TestProjectScaffolder.CanCreate(directory)) return null;
 
-        var useFileEdits = IsLanguageServer(document.Project.Solution.Workspace);
-        return new CreateTestProjectCodeAction(document, targetType, compilation, directory, useFileEdits, onlyMember);
-    }
-
-    /// <summary>
-    /// VS Code などの Roslyn 言語サーバー上で動いているかを判定する（独自の CodeActionOperation が実行されない環境）
-    /// </summary>
-    private static bool IsLanguageServer(Workspace workspace)
-    {
-        return workspace.GetType().FullName?.Contains(".LanguageServer.") == true;
+        return new CreateTestProjectCodeAction(document, targetType, compilation, directory, onlyMember);
     }
 
     /// <summary>

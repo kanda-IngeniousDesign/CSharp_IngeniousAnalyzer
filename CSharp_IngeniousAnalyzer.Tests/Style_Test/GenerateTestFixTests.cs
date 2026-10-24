@@ -59,7 +59,7 @@ public class GenerateTestFixTests
 
     /// <summary>
     /// テストプロジェクトがなければ、「テストプロジェクトを作成して生成」と Ignore が出ることを確認する。
-    /// 作成はプロジェクトの追加を伴うため、ソリューションの変更（ApplyChangesOperation）ではなく独自の操作になる
+    /// 作成も、どの IDE でも反映されるソリューションの変更（ApplyChangesOperation）だけで行う
     /// </summary>
     [Fact]
     public async Task Fix_NoTestProject_OffersCreateTestProjectAndIgnore()
@@ -70,20 +70,17 @@ public class GenerateTestFixTests
         var actions = await ComputeFixesAsync(workspace);
 
         Assert.Equal(
-            ["Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する", "Ignore : テストコードの存在チェックを無視する"],
+            ["Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）", "Ignore : テストコードの存在チェックを無視する"],
             actions.Select(a => a.Title));
-        var operations = await actions[0].GetOperationsAsync(CancellationToken.None);
-        var operation = Assert.Single(operations);
-        Assert.IsNotType<ApplyChangesOperation>(operation);
-        Assert.Empty(await actions[0].GetPreviewOperationsAsync(CancellationToken.None));
+        await ApplyAsync(actions[0]);
     }
 
     /// <summary>
-    /// VS Code 向け（独自の操作が実行されない環境）では、csproj とテストファイルを
+    /// csproj とテストファイルを
     /// プロダクトのプロジェクトの追加ファイルとして作らせ（＝ファイルの作成として反映される）、ソリューションへの追加方法をコメントで案内することを確認する
     /// </summary>
     [Fact]
-    public async Task CreateTestProject_FileEditsMode_AddsProjectFileAndTestFileAsNewFiles()
+    public async Task CreateTestProject_AddsProjectFileAndTestFileAsNewFiles()
     {
         using var workspace = new AdhocWorkspace();
         AddProductProject(workspace);
@@ -92,7 +89,7 @@ public class GenerateTestFixTests
         var targetType = compilation.GetTypeByMetadataName("Product.Domain.Calculator")!;
         var testProjectDirectory = Path.Combine("/src", "Product.Tests");
 
-        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory, useFileEdits: true);
+        var action = new CreateTestProjectCodeAction(document, targetType, compilation, testProjectDirectory);
         var newSolution = await ApplyAsync(action);
 
         Assert.Equal("Fix : テストプロジェクト（Product.Tests）を作成してテストコードを生成する（ソリューションへの追加は dotnet sln add で）", action.Title);
