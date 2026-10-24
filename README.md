@@ -58,6 +58,13 @@ The ideographic (full-width) space U+3000 is intentionally not flagged, as it is
 
 UNI001 doesn't provide a fix that rewrites the character. For example, whether a no-break space in a string should become a normal space, be removed, or is intentional can't be determined by the analyzer, and replacing it with `\u00A0` would only hide the warning while leaving the bug in place. Please correct it manually. For intentional occurrences, a Quick Fix inserts `// Ignore UNI001` immediately before the nearest statement or member declaration (field, method, class, etc.) containing the character. The comment also suppresses everything inside that statement/member, so placing it before a method or class suppresses the whole method or class.
 
+TEST001 and TEST002 report missing unit tests. Both are **disabled by default** because they would flag almost every class in an existing project; enable them in `.editorconfig` with `dotnet_diagnostic.TEST001.severity = warning` and `dotnet_diagnostic.TEST002.severity = warning`. While a rule is disabled, nothing is analyzed and no light bulb items are added.
+
+- **TEST001** is reported only when the Quick Fix can actually generate tests. If the test project has no test file (`XxxTests.cs`) for the class, it is reported on the class name and the Quick Fix generates the test file (creating the test project if needed). If the test file exists, it is reported on each public method, constructor or property setter that has no test (no test method named `MemberName_...`), and the Quick Fix adds the tests for that member only; existing test methods are never changed.
+- **TEST002** is reported on members without tests whose tests cannot be generated automatically (for example, members that use files, databases or the network), with the reason. Verify such members another way, then suppress the warning with the Quick Fix, which inserts `// Ignore TEST002` before the member, so that untested members are always an explicit decision.
+
+Whether tests can be generated is decided by the same planning code that generates them, so the warning and the Quick Fix never disagree. Generated tests include exception tests from argument guards, boundary-value tests with expected values computed from the code, and no-exception checks for methods without a return value; if the test project references Moq and Verify.Xunit, dependencies are mocked and values that can't be computed are recorded as snapshots. Product code is never rewritten. Test projects themselves (projects that reference xUnit, NUnit, or MSTest), nested classes and abstract classes are excluded. The test project is looked up next to the project as `<ProjectName>.Tests` by default; set the `IngeniousTestProjectDirectory` property in the csproj to use another folder. `// Ignore TEST001` before a class or member suppresses TEST001.
+
 ## Rule List
 
 | ID | Title | Message |
@@ -78,6 +85,8 @@ UNI001 doesn't provide a fix that rewrites the character. For example, whether a
 | EXC002 | Preserve the stack trace when rethrowing exceptions | Use 'throw;' instead of 'throw {0};' to preserve the original stack trace. |
 | ASYNC001 | Deadlock avoidance by adding ConfigureAwait(false) | The call to '{0}' is missing ConfigureAwait(false). Consider adding it in library code to avoid potential deadlocks. |
 | UNI001 | Prevent hidden bugs by detecting invisible Unicode characters | The invisible Unicode character {0} ({1}) is mixed into the code. If it was mixed in unintentionally, remove it or replace it with an ordinary character. |
+| TEST001 | Prevent untested classes by generating test code (disabled by default) | No test code ({0}Tests) was found for the class '{0}'. Generate the test code with the Quick Fix. / '{0}' has no tests in {1}. Add the generated tests with the Quick Fix. |
+| TEST002 | Make untestable members explicit (disabled by default) | Tests for '{0}' cannot be generated automatically ({1}). Verify it another way, then ignore this warning. |
 
 ---
 
@@ -139,6 +148,13 @@ UNI001は、目視で判別できないUnicode文字を検知します。Webペ�
 
 UNI001は、文字を書き換えるFixは提供していません。例えば文字列内のノーブレークスペースは、半角スペースにすべきか・削除すべきか・意図的なのかをアナライザーが判断できず、`\u00A0` への置き換えは不具合を残したまま警告だけを消してしまうためです。手動で修正してください。意図的な箇所には、その文字を含む直近の文またはメンバー宣言（フィールド・メソッド・クラス等）の直前に `// Ignore UNI001` を挿入するクイックフィックスを用意しています。このコメントはその文・メンバーの内側すべてに効くため、メソッドやクラスの直前に書けば、そのメソッド・クラス全体を抑制できます。
 
+TEST001・TEST002は、単体テストの不足を検知します。既存のプロジェクトではほぼすべてのクラスが対象になるため、どちらも**既定では無効**です。`.editorconfig` に `dotnet_diagnostic.TEST001.severity = warning`、`dotnet_diagnostic.TEST002.severity = warning` を書くと有効になります。無効の間は解析もしないため、電球メニューの項目も増えません。
+
+- **TEST001** は、クイックフィックスで実際にテストを生成できる場合だけ報告します。テストプロジェクトにクラスのテストファイル（`XxxTests.cs`）がなければクラス名に報告し、クイックフィックスでテストファイルを生成します（テストプロジェクトがなければ作成します）。テストファイルがあれば、テストのない（「メンバー名_」で始まるテストメソッドがない）publicなメソッド・コンストラクタ・プロパティのsetterの名前に報告し、クイックフィックスでそのメンバーのテストだけを追加します。既存のテストメソッドは変更しません。
+- **TEST002** は、テストがなく、自動では生成できないメンバー（ファイル・DB・通信を使うものなど）に、理由とともに報告します。別の方法で確認したうえで、クイックフィックスでメンバーの直前に `// Ignore TEST002` を挿入して警告を消します。テストのないメンバーが、必ず人間の判断として残るようにするためです。
+
+生成できるかどうかは、実際の生成と同じ処理で判定するため、警告とクイックフィックスの結果は食い違いません。生成するテストは、引数ガードからの例外テスト、コードから期待値を計算した境界値のテスト、戻り値のないメソッドが例外を出さないことの確認です。テストプロジェクトが Moq と Verify.Xunit を参照していれば、依存をモックし、計算できない値はスナップショットとして記録します。プロダクトコードは書き換えません。テストプロジェクト自身（xUnit・NUnit・MSTestを参照しているプロジェクト）、入れ子のクラス、抽象クラスは対象外です。テストプロジェクトは、既定では隣のフォルダの「プロジェクト名.Tests」を探します。別の場所にある場合は、csprojで `IngeniousTestProjectDirectory` プロパティを指定してください。クラスやメンバーの直前の `// Ignore TEST001` でTEST001を抑止できます。
+
 ## Rule List (ルール一覧)
 
 | ID | Title (JP) | Message (JP) |
@@ -159,3 +175,5 @@ UNI001は、文字を書き換えるFixは提供していません。例えば�
 | EXC002 | 再スロー時のスタックトレース保持 | 'throw {0};' ではなく 'throw;' を使用して、元のスタックトレースを保持してください。 |
 | ASYNC001 | ConfigureAwait(false)の追加によるデッドロック回避 | '{0}' の呼び出しに ConfigureAwait(false) がありません。ライブラリコードではデッドロック回避のため追加を検討してください。 |
 | UNI001 | 不可視Unicode文字の検知による不具合防止 | 目視で判別できないUnicode文字 {0}（{1}）が混入しています。意図しない混入であれば、削除するか通常の文字に置き換えてください。 |
+| TEST001 | テストコードの生成によるテスト漏れの防止（既定では無効） | クラス '{0}' のテストコード（{0}Tests）が見つかりません。クイックフィックスでテストコードを生成してください。／'{0}' のテストが {1} にありません。クイックフィックスでテストコードを追加してください。 |
+| TEST002 | 自動生成できないテストの明示（既定では無効） | '{0}' のテストコードは自動生成できません（{1}）。別の方法で確認したうえで、警告を Ignore してください。 |

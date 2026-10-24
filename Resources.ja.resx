@@ -53,4 +53,10 @@
 
   <data name="UNI001_Title"><value>不可視Unicode文字の検知による不具合防止</value></data>
   <data name="UNI001_Message"><value>目視で判別できないUnicode文字 {0}（{1}）が混入しています。意図しない混入であれば、削除するか通常の文字に置き換えてください。</value></data>
+
+  <data name="TEST001_Title"><value>テストコードの生成によるテスト漏れの防止</value></data>
+  <data name="TEST001_Message"><value>クラス '{0}' のテストコード（{0}Tests）が見つかりません。クイックフィックスでテストコードを生成してください。</value></data>
+  <data name="TEST001_MemberMessage"><value>'{0}' のテストが {1} にありません。クイックフィックスでテストコードを追加してください。</value></data>
+  <data name="TEST002_Title"><value>自動生成できないテストの明示</value></data>
+  <data name="TEST002_Message"><value>'{0}' のテストコードは自動生成できません（{1}）。別の方法で確認したうえで、警告を Ignore してください。</value></data>
 </root>
