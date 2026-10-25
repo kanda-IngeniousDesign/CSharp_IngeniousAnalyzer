@@ -2,11 +2,12 @@ using CSharp_IngeniousAnalyzer.Style__Common;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp.Syntax;
 using Microsoft.CodeAnalysis.Text;
+using Roslyn_IngeniousCommon;
 
 namespace CSharp_IngeniousAnalyzer.Tests.Style__Common;
 
 /// <summary>
-/// CommonCodeFix.InsertIgnoreCommentInMethodAsync（CPX001/CPX002/ASYNC001 の Ignore Fix で共用）の
+/// IgnoreCommentFix.InsertIgnoreCommentInMethodAsync（Roslyn_IngeniousCommon）（CPX001/CPX002/ASYNC001 の Ignore Fix で共用）の
 /// 挿入位置・改行コードの判定を、ルールを介さず直接検証するテスト
 /// </summary>
 public class CommonCodeFixTests

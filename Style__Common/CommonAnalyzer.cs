@@ -65,14 +65,7 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
         // Style_Unicode
         UNI001_Title,
-        UNI001_Message,
-
-        // Style_Test
-        TEST001_Title,
-        TEST001_Message,
-        TEST001_MemberMessage,
-        TEST002_Title,
-        TEST002_Message
+        UNI001_Message
     }
 
     protected static LocalizableResourceString CreateLocalStr(string resourceKey)
@@ -92,9 +85,6 @@ public abstract class CommonAnalyzer : DiagnosticAnalyzer
 
     public static bool IsGeneratedFile(SyntaxNodeAnalysisContext context)
     {
-        var filePath = context.Node.SyntaxTree.FilePath;
-        return filePath.EndsWith(".Designer.cs", StringComparison.OrdinalIgnoreCase) ||
-            filePath.EndsWith(".g.cs", StringComparison.OrdinalIgnoreCase) || // WPF/XAML自動生成用
-            filePath.EndsWith(".generated.cs", StringComparison.OrdinalIgnoreCase);
+        return GeneratedCode.IsGeneratedFile(context.Node.SyntaxTree);
     }
 }
