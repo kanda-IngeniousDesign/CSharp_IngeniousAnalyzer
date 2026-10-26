@@ -40,7 +40,13 @@ private void SomeComplexLegacyMethod() { ... }
 
 ASYNC001 likewise doesn't provide a fix that appends `.ConfigureAwait(false)`. Adding it changes where the code after the `await` runs (it no longer returns to the original `SynchronizationContext`), so code that touches UI elements (WinForms/WPF) or `HttpContext.Current` (ASP.NET Framework) after the `await` would break at runtime, and the analyzer alone can't determine this with 100% accuracy. Please add it manually after confirming that the code after the `await` doesn't depend on the context. For methods that intentionally need to return to the original context, a Quick Fix inserts `// Ignore ASYNC001` at the start of the containing method's body (suppressing every await in that method, including those in lambdas and local functions). Awaits in `async void` methods/lambdas, `static Main`, and top-level statements are not flagged. If the rule is noisy in application or test projects, adjust its severity in .editorconfig.
 
-LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the corresponding `foreach` loop body calls any method on the original source collection (e.g. `Remove`, `Add`). Removing the materialization in that case would make the loop enumerate and mutate the same collection at once, causing a runtime `InvalidOperationException`; the `.ToList()`/`.ToArray()` there is very likely an intentional snapshot, not unnecessary allocation.
+Removing `.ToList()`/`.ToArray()` delays the query (its lambdas run while the `foreach` enumerates, interleaved with the loop body instead of up front), and removing a bare `.ToList()` makes the variable refer to the source instance itself. LINQ002 therefore flags the call only when it can confirm that the fix doesn't change behavior:
+- The lambdas in the chain have no side effects: no method calls other than LINQ's own, no `new`, assignments, `++`/`--`, `await`, `foreach`, `using`, `with`, collection expressions, positional patterns, or time-dependent values such as `DateTime.Now`. Method groups and delegate variables aren't passed in place of lambdas. The chain isn't query syntax or `IQueryable` (e.g. a database query).
+- From the `.ToList()`/`.ToArray()` call to the end of the loop, there is no method or delegate call, `new`, `await`, `yield return`, `using`, other `foreach`, query syntax, write to anything other than a local variable (fields, properties, elements, events, `ref` locals/parameters, primary-constructor parameters, and variables captured by a lambda/local function or whose address is taken), and no reference to a variable used by the chain (including the source).
+- Enumerating the receiver directly yields the same elements: the element type doesn't change (e.g. `ToList<object>()` on strings is excluded) and the receiver's public `GetEnumerator()` is the `IEnumerable<T>` implementation or a .NET collection (e.g. `MatchCollection` is excluded). The static form `Enumerable.ToList(x)` isn't flagged.
+- When going through a variable, the method contains no `goto`, the `foreach` isn't inside a lambda or local function other than the one containing the declaration, and the `foreach` runs only once per materialization (it isn't inside a loop that doesn't also repeat the declaration, such as a declaration in a `for` initializer). Otherwise the query would be re-evaluated on every pass.
+
+Because what a called method does can't be analyzed, any method call in that range suppresses the warning. The rule assumes that getters, operators, conversions, `ToString`/`Equals`/`GetHashCode`/`CompareTo`/`Deconstruct`, static constructors, and enumerating the source itself (including custom `yield` extension methods and comparers passed to e.g. `Distinct`) have no side effects, that no other thread changes the data, and that evaluating the chain doesn't throw (if it does, when the exception occurs, or whether it occurs at all when the loop exits early, may change).
 UNI001 detects Unicode characters that can't be told apart visually. They sneak in easily when copying from web pages, AI chat output, or diff tools, and the code usually still compiles (C# treats a no-break space as whitespace, and zero-width characters are valid inside identifiers), so they are hard to notice. The following characters are flagged anywhere in the file (string literals, identifiers, whitespace, comments, and code disabled by `#if`):
 
 | Category | Characters |
@@ -120,7 +126,13 @@ private void SomeComplexLegacyMethod() { ... }
 
 ASYNC001も同様に、`.ConfigureAwait(false)` を追記するFixは提供していません。追記すると `await` 以降の処理が元の `SynchronizationContext` に戻らなくなるため、`await` の後でUI要素（WinForms/WPF）や `HttpContext.Current`（ASP.NET Framework）に触れているコードは実行時に動作しなくなります。アナライザー単体ではこれを100%判定できないため、`await` 以降の処理がコンテキストに依存していないことを確認のうえ、手動で追加してください。意図的に元のコンテキストへ戻す必要があるメソッドには、メソッド本体の先頭に `// Ignore ASYNC001` を挿入するクイックフィックスを用意しています（ラムダ式・ローカル関数を含め、そのメソッド内のすべての await が抑制されます）。なお、`async void` のメソッド・ラムダ式、`static Main`、トップレベルステートメント内の await は検知対象外です。アプリケーションやテストプロジェクトでノイズになる場合は、.editorconfig でseverityを調整してください。
 
-LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレクションに対するメソッド呼び出し（`Remove`、`Add`等）がある場合、`.ToList()`/`.ToArray()`を警告・自動修正しません。その状況で実体化を取り除くと、同じコレクションを列挙しながら変更することになり実行時に`InvalidOperationException`が発生してしまうため、その`.ToList()`/`.ToArray()`は不要なメモリ確保ではなく意図的なスナップショットである可能性が高いと判断しています。
+`.ToList()`/`.ToArray()`を削除すると、クエリが遅延評価になります（ラムダが確定させた行ではなく、`foreach`で列挙する時点でループ本体と交互に実行されます）。また、`.ToList()`だけを削除すると、変数が列挙元と同じインスタンスを指すようになります。そのためLINQ002は、Fixで動作が変わらないことを確認できた場合だけ警告します。
+- チェーンのラムダに副作用がないこと：LINQ以外のメソッド呼び出し、`new`、代入、`++`/`--`、`await`、`foreach`、`using`、`with`、コレクション式、位置パターン、`DateTime.Now`などの時刻に依存する値を使っていないこと。ラムダの代わりにメソッドグループやデリゲート変数を渡していないこと。クエリ構文や`IQueryable`（DBクエリ等）でないこと。
+- `.ToList()`/`.ToArray()`からループの終わりまでに、メソッドやデリゲートの呼び出し、`new`、`await`、`yield return`、`using`、別の`foreach`、クエリ構文、ローカル変数以外（フィールド、プロパティ、要素、イベント、`ref`ローカル・引数、プライマリコンストラクターの引数、ラムダやローカル関数に捕まえられている変数、アドレスを取られている変数など）への書き込み、チェーンが使う変数（列挙元を含む）への参照がないこと。
+- 受け手を直接列挙しても同じ要素になること：要素の型が変わらないこと（文字列に対する`ToList<object>()`などは対象外）、受け手の公開`GetEnumerator()`が`IEnumerable<T>`の実装そのものか.NETのコレクションであること（`MatchCollection`などは対象外）。`Enumerable.ToList(x)`のような静的メソッド形式は対象外。
+- 変数を経由する場合は、メソッド内に`goto`がなく、`foreach`が宣言とは別のラムダやローカル関数の中になく、1回の確定に対して`foreach`が1回だけ実行されること（`for`の初期化子で宣言した場合など、宣言を繰り返さないループの中に`foreach`がある場合は対象外。削除すると周回ごとにクエリを評価し直すことになるため）。
+
+呼び出し先の処理は解析できないため、この区間にメソッド呼び出しがあれば内容を問わず警告しません。また、getter、演算子、型変換、`ToString`/`Equals`/`GetHashCode`/`CompareTo`/`Deconstruct`、静的コンストラクター、列挙元そのものの列挙（`yield`を使った独自の拡張メソッドや、`Distinct`などに渡す比較子を含む）が副作用を持たないこと、他のスレッドがデータを変更しないこと、チェーンの評価が例外を投げないこと（投げる場合、例外の発生タイミングや、ループを途中で抜けたときに例外が起きるかどうかが変わります）を前提としています。
 
 UNI001は、目視で判別できないUnicode文字を検知します。Webページ・生成AIのチャット出力・差分ツール等からのコピー＆ペーストで混入しやすく、多くの場合そのままコンパイルが通る（C#はノーブレークスペースを空白として扱い、ゼロ幅文字は識別子の一部として有効）ため、気付くのが困難です。ファイル内のあらゆる場所（文字列リテラル・識別子・空白・コメント・`#if` で無効化されたコード）にある以下の文字を検知します。
 
@@ -148,7 +160,7 @@ UNI001は、文字を書き換えるFixは提供していません。例えば�
 | STR002 | nameofへの置き換えによる安全性向上 | 文字列リテラル '{0}' ではなく、型安全な 'nameof({0})' を使用してください。 |
 | STR003 | 冗長なToString()呼び出しの削除によるコード最適化 | '{0}' は既にstring型です。冗長な '.ToString()' 呼び出しを削除してください。 |
 | LINQ001 | LINQ評価の統合によるパフォーマンス向上 | Where().{0}() のチェーンを、単一の '{0}(predicate)' に統合して最適化してください。 |
-| LINQ002 | 不要なコレクションの実体化の削除 | '{0}' は列挙後に再利用されていません。メモリ確保を回避するため、呼び出しを削除してください。 |
+| LINQ002 | 不要なコレクション確定の削除 | '{0}' は列挙後に再利用されていません。不要なコレクションの実体化（メモリ確保）を回避するため、呼び出しを削除してください。 |
 | COLL001 | List初期キャパシティ指定によるメモリ削減 | ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。 |
 | COMM001 | ドキュメントコメント追加による可読性・保守性の向上 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
 | COMM002 | パラメータ同期による関数ヘッダーの整合性向上 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |
