@@ -17,8 +17,6 @@
   <data name="LINQ001_Title"><value>Performance improvement by integrating LINQ evaluation</value></data>
   <data name="LINQ001_Message"><value>Integrate the Where().{0}() chain into a single '{0}(predicate)' for optimization.</value></data>
 
-  <data name="LINQ002_Title"><value>Removal of unnecessary collection materialization</value></data>
-  <data name="LINQ002_Message"><value>'{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation.</value></data>
 
   <data name="COLL001_Title"><value>Memory reduction by specifying initial List capacity</value></data>
   <data name="COLL001_Message"><value>Specify an initial capacity in the List constructor as the loop count is predictable.</value></data>

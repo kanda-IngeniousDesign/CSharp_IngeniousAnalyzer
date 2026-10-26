@@ -40,7 +40,6 @@ private void SomeComplexLegacyMethod() { ... }
 
 ASYNC001 likewise doesn't provide a fix that appends `.ConfigureAwait(false)`. Adding it changes where the code after the `await` runs (it no longer returns to the original `SynchronizationContext`), so code that touches UI elements (WinForms/WPF) or `HttpContext.Current` (ASP.NET Framework) after the `await` would break at runtime, and the analyzer alone can't determine this with 100% accuracy. Please add it manually after confirming that the code after the `await` doesn't depend on the context. For methods that intentionally need to return to the original context, a Quick Fix inserts `// Ignore ASYNC001` at the start of the containing method's body (suppressing every await in that method, including those in lambdas and local functions). Awaits in `async void` methods/lambdas, `static Main`, and top-level statements are not flagged. If the rule is noisy in application or test projects, adjust its severity in .editorconfig.
 
-LINQ002 will not flag (or auto-fix) a `.ToList()`/`.ToArray()` call when the corresponding `foreach` loop body calls any method on the original source collection (e.g. `Remove`, `Add`). Removing the materialization in that case would make the loop enumerate and mutate the same collection at once, causing a runtime `InvalidOperationException`; the `.ToList()`/`.ToArray()` there is very likely an intentional snapshot, not unnecessary allocation.
 UNI001 detects Unicode characters that can't be told apart visually. They sneak in easily when copying from web pages, AI chat output, or diff tools, and the code usually still compiles (C# treats a no-break space as whitespace, and zero-width characters are valid inside identifiers), so they are hard to notice. The following characters are flagged anywhere in the file (string literals, identifiers, whitespace, comments, and code disabled by `#if`):
 
 | Category | Characters |
@@ -67,7 +66,6 @@ UNI001 doesn't provide a fix that rewrites the character. For example, whether a
 | STR002 | Safety improvement by replacing with nameof | Use type-safe 'nameof({0})' instead of the magic string '{0}'. |
 | STR003 | Code optimization by removing redundant ToString() calls | '{0}' is already a string. Remove the redundant '.ToString()' call. |
 | LINQ001 | Performance improvement by integrating LINQ evaluation | Integrate the Where().{0}() chain into a single '{0}(predicate)' for optimization. |
-| LINQ002 | Removal of unnecessary collection materialization | '{0}' is not reused after enumeration. Remove this call to avoid unnecessary memory allocation. |
 | COLL001 | Memory reduction by specifying initial List capacity | Specify an initial capacity in the List constructor as the loop count is predictable. |
 | COMM001 | Improved readability and maintainability by adding documentation comments | Function header is missing. Please add the documentation comments. |
 | COMM002 | Improved accuracy by synchronizing function header parameters | Function header parameters do not match the method definition. Please synchronize '{0}'. |
@@ -120,8 +118,6 @@ private void SomeComplexLegacyMethod() { ... }
 
 ASYNC001も同様に、`.ConfigureAwait(false)` を追記するFixは提供していません。追記すると `await` 以降の処理が元の `SynchronizationContext` に戻らなくなるため、`await` の後でUI要素（WinForms/WPF）や `HttpContext.Current`（ASP.NET Framework）に触れているコードは実行時に動作しなくなります。アナライザー単体ではこれを100%判定できないため、`await` 以降の処理がコンテキストに依存していないことを確認のうえ、手動で追加してください。意図的に元のコンテキストへ戻す必要があるメソッドには、メソッド本体の先頭に `// Ignore ASYNC001` を挿入するクイックフィックスを用意しています（ラムダ式・ローカル関数を含め、そのメソッド内のすべての await が抑制されます）。なお、`async void` のメソッド・ラムダ式、`static Main`、トップレベルステートメント内の await は検知対象外です。アプリケーションやテストプロジェクトでノイズになる場合は、.editorconfig でseverityを調整してください。
 
-LINQ002は、対応する`foreach`ループ本体の中で列挙元の元コレクションに対するメソッド呼び出し（`Remove`、`Add`等）がある場合、`.ToList()`/`.ToArray()`を警告・自動修正しません。その状況で実体化を取り除くと、同じコレクションを列挙しながら変更することになり実行時に`InvalidOperationException`が発生してしまうため、その`.ToList()`/`.ToArray()`は不要なメモリ確保ではなく意図的なスナップショットである可能性が高いと判断しています。
-
 UNI001は、目視で判別できないUnicode文字を検知します。Webページ・生成AIのチャット出力・差分ツール等からのコピー＆ペーストで混入しやすく、多くの場合そのままコンパイルが通る（C#はノーブレークスペースを空白として扱い、ゼロ幅文字は識別子の一部として有効）ため、気付くのが困難です。ファイル内のあらゆる場所（文字列リテラル・識別子・空白・コメント・`#if` で無効化されたコード）にある以下の文字を検知します。
 
 | 分類 | 対象文字 |
@@ -148,7 +144,6 @@ UNI001は、文字を書き換えるFixは提供していません。例えば�
 | STR002 | nameofへの置き換えによる安全性向上 | 文字列リテラル '{0}' ではなく、型安全な 'nameof({0})' を使用してください。 |
 | STR003 | 冗長なToString()呼び出しの削除によるコード最適化 | '{0}' は既にstring型です。冗長な '.ToString()' 呼び出しを削除してください。 |
 | LINQ001 | LINQ評価の統合によるパフォーマンス向上 | Where().{0}() のチェーンを、単一の '{0}(predicate)' に統合して最適化してください。 |
-| LINQ002 | 不要なコレクションの実体化の削除 | '{0}' は列挙後に再利用されていません。メモリ確保を回避するため、呼び出しを削除してください。 |
 | COLL001 | List初期キャパシティ指定によるメモリ削減 | ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。 |
 | COMM001 | ドキュメントコメント追加による可読性・保守性の向上 | 関数ヘッダーが記述されていません。ドキュメントコメントを追加してください。 |
 | COMM002 | パラメータ同期による関数ヘッダーの整合性向上 | 関数ヘッダーのパラメータがメソッド定義と一致していません。'{0}' を同期してください。 |
