@@ -611,4 +611,132 @@ public class ToListToArrayDeleteTests
 
         await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
     }
+
+    /// <summary>
+    /// ToList() で確定させた後、foreach に入る前に列挙元を Clear() している場合は警告しないことを確認する
+    /// （ToList() を削除すると遅延評価になり、ループが Clear() 後の空の列挙元を回して何も処理しなくなる）
+    /// </summary>
+    [Fact]
+    public async Task SourceClearedBeforeForEach_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var snapshot = srcList.Where(n => 0 < n).ToList();
+                    srcList.Clear();
+                    foreach (var item in snapshot) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// ToList() の直接呼び出し（Where なし）でも、foreach の前に列挙元へ要素を追加している場合は警告しないことを確認する
+    /// （ToList() を削除すると変数が列挙元と同じインスタンスを指し、追加した要素までループで処理されてしまう）
+    /// </summary>
+    [Fact]
+    public async Task SourceAddedBeforeForEachWithoutWhere_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var snapshot = srcList.ToList();
+                    srcList.Add(99);
+                    foreach (var item in snapshot) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// foreach の前で列挙元の要素をインデクサーで書き換えている場合は警告しないことを確認する
+    /// （メソッド呼び出しを伴わない変更も、確定後の書き換えとして検知できていることの確認）
+    /// </summary>
+    [Fact]
+    public async Task SourceIndexerAssignedBeforeForEach_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var snapshot = srcList.ToList();
+                    srcList[0] = 99;
+                    foreach (var item in snapshot) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// 外側のループにより、テキスト上は foreach の後にある列挙元の変更が次の周回の foreach より先に実行される場合も
+    /// 警告しないことを確認する
+    /// </summary>
+    [Fact]
+    public async Task SourceClearedAfterForEachInsideOuterLoop_DoesNotReportDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList)
+                {
+                    var snapshot = srcList.Where(n => 0 < n).ToList();
+                    for (var i = 0; i < 2; i++)
+                    {
+                        foreach (var item in snapshot) { }
+                        srcList.Clear();
+                    }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test);
+    }
+
+    /// <summary>
+    /// foreach の前に列挙元とは無関係な処理があるだけの場合は、従来どおり警告することを確認する
+    /// （宣言と foreach の間に文があるだけで一律に警告を止めていないことの確認）
+    /// </summary>
+    [Fact]
+    public async Task UnrelatedStatementBeforeForEach_StillReportsDiagnostic()
+    {
+        var test = """
+            using System.Collections.Generic;
+            using System.Linq;
+
+            public class C
+            {
+                void M(List<int> srcList, List<int> unrelated)
+                {
+                    var filtered = {|#0:srcList.Where(n => 0 < n).ToList()|};
+                    unrelated.Clear();
+                    foreach (var item in filtered) { }
+                }
+            }
+            """;
+
+        await Verify.VerifyAnalyzerAsync(test, Verify.Diagnostic().WithLocation(0).WithArguments("srcList.Where(n => 0 < n)"));
+    }
 }

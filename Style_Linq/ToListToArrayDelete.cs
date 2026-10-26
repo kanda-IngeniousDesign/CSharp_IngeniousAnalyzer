@@ -272,7 +272,34 @@ public class ToListToArrayDelete : CommonAnalyzer
         // foreachループ本体内で変更（Remove/Add等）している場合は、列挙中の変更を避けるための
         // 意図的なスナップショットである可能性が高いため警告しない
         var rootSymbol = GetChainRootSymbol(invocation, model, cancellationToken);
-        return rootSymbol == null || !ForEachBodyMutatesSymbol(foundForEach, rootSymbol, model, cancellationToken);
+        if (rootSymbol == null)
+        {
+            return true;
+        }
+
+        // 確定させた後に列挙元へ少しでも触れている場合（foreach前の Clear()、外側ループで
+        // 次の周回より先に実行される変更、インデクサーでの書き換えなど）は、確定時点の内容を
+        // 保持する意図的なスナップショットである。ToList/ToArray を削除すると遅延評価や
+        // 同一インスタンス参照になり、ループが変更後の内容を回してしまうため警告しない
+        return !IsSymbolReferencedAfter(methodBody, invocation.Span.End, rootSymbol, model, cancellationToken) &&
+               !ForEachBodyMutatesSymbol(foundForEach, rootSymbol, model, cancellationToken);
+    }
+
+    /// <summary>
+    /// 指定位置より後ろで、指定したシンボルが参照されているかを判定します
+    /// </summary>
+    private static bool IsSymbolReferencedAfter(SyntaxNode methodBody, int position, ISymbol symbol, SemanticModel model, CancellationToken cancellationToken)
+    {
+        foreach (var id in methodBody.DescendantNodes().OfType<IdentifierNameSyntax>())
+        {
+            if (id.SpanStart >= position &&
+                SymbolEqualityComparer.Default.Equals(model.GetSymbolInfo(id, cancellationToken).Symbol, symbol))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
