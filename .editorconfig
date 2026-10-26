@@ -11,7 +11,6 @@ dotnet_diagnostic.STR003.severity = warning
 
 # --- Linq Rules (Avoid unnecessary ToList/ToArray, optimize performance) ---
 dotnet_diagnostic.LINQ001.severity = warning
-dotnet_diagnostic.LINQ002.severity = warning
 
 # --- Collection Rules (List capacity, initialization, etc.) ---
 dotnet_diagnostic.COLL001.severity = warning

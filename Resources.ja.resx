@@ -17,8 +17,6 @@
   <data name="LINQ001_Title"><value>LINQ評価の統合によるパフォーマンス向上</value></data>
   <data name="LINQ001_Message"><value>Where().{0}() のチェーンを、単一の '{0}(条件)' に統合して最適化してください。</value></data>
 
-  <data name="LINQ002_Title"><value>不要なコレクション確定の削除</value></data>
-  <data name="LINQ002_Message"><value>'{0}' は列挙後に再利用されていません。不要なコレクションの実体化（メモリ確保）を回避するため、呼び出しを削除してください。</value></data>
 
   <data name="COLL001_Title"><value>List初期キャパシティ指定によるメモリ削減</value></data>
   <data name="COLL001_Message"><value>ループ回数が予測可能なため、Listのコンストラクタに初期キャパシティを指定してください。</value></data>
