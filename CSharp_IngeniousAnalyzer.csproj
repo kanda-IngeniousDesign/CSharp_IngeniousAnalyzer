@@ -14,11 +14,11 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.4.1</Version>
+    <Version>3.4.2</Version>
 
     <PackageReleaseNotes>
-      - LINQ002の誤検知を修正: ToList()/ToArray() の結果を変数に入れた後、foreach より前に列挙元を変更（Clear()/Add()/インデクサーでの書き換え等）している場合や、外側のループで次の周回より先に列挙元を変更している場合にも警告し、Fixで削除するとループが変更後の内容を回してしまっていた。確定後に列挙元を参照している場合は意図的なスナップショットとみなし、警告しないようにした
-      - Fix a LINQ002 false positive: the rule warned even when the source collection was changed after ToList()/ToArray() was stored in a variable (for example with Clear(), Add(), or an indexer assignment before the foreach, or in an outer loop before the next iteration), and applying the Fix made the loop iterate over the changed contents. When the source is referenced after the materialization, the call is now treated as an intentional snapshot and no warning is reported
+      - LINQ002（foreach の前の不要な ToList()/ToArray() の削除）を廃止。その ToList()/ToArray() が意図的なスナップショットなのか不要なメモリ確保なのかはコードの字面から判定できず、判定を強化しても Fix を適用すると動作が変わるケースが残り続けたため。これまで LINQ002 が出ていたコードでは警告が出なくなる（.editorconfig の dotnet_diagnostic.LINQ002.severity は無視される）
+      - Remove LINQ002 (removal of unnecessary ToList()/ToArray() before foreach). Whether such a call is an intentional snapshot or an unnecessary allocation can't be determined from the code, and even after hardening the rule, cases remained where applying the fix changed program behavior. Code that used to get LINQ002 no longer gets a warning (dotnet_diagnostic.LINQ002.severity in .editorconfig is simply ignored)
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>
