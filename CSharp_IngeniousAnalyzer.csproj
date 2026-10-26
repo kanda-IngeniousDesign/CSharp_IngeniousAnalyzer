@@ -14,11 +14,11 @@
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <LangVersion>latest</LangVersion>
-    <Version>3.4.0</Version>
+    <Version>3.4.1</Version>
 
     <PackageReleaseNotes>
-      - UNI001を追加: ノーブレークスペース（U+00A0）・ゼロ幅文字・双方向制御文字・制御文字・結合用の濁点・タグ文字など、目視で判別できないUnicode文字の混入を、文字列・識別子・空白・コメントを問わず検知（全角スペースU+3000は対象外）。正しい修正（半角スペース化・削除等）をアナライザーが判断できないため書き換えるFixは提供せず、直近の文・メンバー宣言の直前に "// Ignore UNI001" コメントを挿入するFixのみ提供
-      - Add UNI001: detect invisible Unicode characters such as the no-break space (U+00A0), zero-width characters, bidirectional controls, control characters, combining voiced sound marks, and tag characters anywhere in the code, including strings, identifiers, whitespace, and comments (the ideographic space U+3000 is excluded). Because the analyzer can't determine the correct correction (a normal space, removal, etc.), no Fix rewrites the character; only a Fix that inserts a "// Ignore UNI001" comment before the nearest statement or member declaration is provided
+      - LINQ002の誤検知を修正: ToList()/ToArray() の結果を変数に入れた後、foreach より前に列挙元を変更（Clear()/Add()/インデクサーでの書き換え等）している場合や、外側のループで次の周回より先に列挙元を変更している場合にも警告し、Fixで削除するとループが変更後の内容を回してしまっていた。確定後に列挙元を参照している場合は意図的なスナップショットとみなし、警告しないようにした
+      - Fix a LINQ002 false positive: the rule warned even when the source collection was changed after ToList()/ToArray() was stored in a variable (for example with Clear(), Add(), or an indexer assignment before the foreach, or in an outer loop before the next iteration), and applying the Fix made the loop iterate over the changed contents. When the source is referenced after the materialization, the call is now treated as an intentional snapshot and no warning is reported
     </PackageReleaseNotes>
 
     <Nullable>enable</Nullable>
